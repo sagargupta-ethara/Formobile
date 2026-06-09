@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DESIGNER
+  ONSITE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Lifecycle of a design task
+enum TaskStatus {
+  ASSIGNED          // created by admin, awaiting designer upload
+  PENDING_REVIEW    // designer uploaded, awaiting on-site review
+  APPROVED          // reviewer approved
+  REJECTED          // reviewer rejected, awaiting designer revision
+  REVISION_SUBMITTED // designer uploaded a new version after rejection -> back to reviewer
+}
+
+enum ReviewDecision {
+  APPROVED
+  REJECTED
+}
+
+model Specialization {
+  id         String           @id @default(cuid())
+  name       String           @unique
+  users      User[]
+  categories DesignCategory[]
+  createdAt  DateTime         @default(now())
+}
+
+model User {
+  id               String          @id @default(cuid())
+  name             String
+  email            String          @unique
+  phone            String?
+  passwordHash     String
+  role             Role
+  specializationId String?
+  specialization   Specialization? @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  status           UserStatus      @default(ACTIVE)
+  avatarKey        String?         // path on disk under STORAGE_DIR for profile photo
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @default(now()) @updatedAt
+
+  designTasks  DesignTask[]   @relation("designer")
+  reviews      Review[]
+  uploadedFiles DesignFile[]  @relation("uploader")
+  auditLogs    AuditLog[]
+}
+
+model Project {
+  id                 String        @id @default(cuid())
+  name               String
+  code               String        @unique
+  clientName         String?
+  location           String?
+  startDate          DateTime?
+  expectedCompletion DateTime?
+  status             ProjectStatus @default(PLANNING)
+  createdAt          DateTime      @default(now())
+
+  floors Floor[]
+  tasks  DesignTask[]
+}
+
+model Floor {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  floorName String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tasks DesignTask[]
+}
+
+model DesignCategory {
+  id               String          @id @default(cuid())
+  name             String          @unique
+  specializationId String?
+  specialization   Specialization? @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+
+  tasks DesignTask[]
+}
+
+model DesignTask {
+  id          String     @id @default(cuid())
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  floorId     String
+  floor       Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    DesignCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  designerId  String?
+  designer    User?      @relation("designer", fields: [designerId], references: [id], onDelete: SetNull)
+  deadline    DateTime?
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(ASSIGNED)
+  // The version number currently awaiting / under review. On-site reviewers
+  // may only see this version; older versions are hidden from them.
+  currentVersion Int     @default(0)
+  reviewDueAt DateTime?  // set when task enters review; drives the 24h SLA countdown
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  files   DesignFile[]
+  reviews Review[]
+
+  @@index([projectId])
+  @@index([designerId])
+}
+
+model DesignFile {
+  id           String   @id @default(cuid())
+  taskId       String
+  task         DesignTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  version      Int
+  fileName     String
+  fileType     String
+  fileSize     Int
+  storageKey   String   // path on disk under STORAGE_DIR
+  uploadedById String?
+  uploadedBy   User?    @relation("uploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedAt   DateTime @default(now())
+
+  @@unique([taskId, version])
+}
+
+model Review {
+  id           String         @id @default(cuid())
+  taskId       String
+  task         DesignTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewerId   String?
+  reviewer     User?          @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+  version      Int            // which file version this review applies to
+  decision     ReviewDecision
+  comments     String?
+  createdAt    DateTime       @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  action      String
+  detail      String?
+  performedById String?
+  performedBy User?    @relation(fields: [performedById], references: [id], onDelete: SetNull)
+  timestamp   DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
