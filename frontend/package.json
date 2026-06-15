@@ -1,0 +1,9 @@
+{
+  "name": "frontend-shim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Supervisor shim that delegates to the Next.js app at /app",
+  "scripts": {
+    "start": "cd /app && exec node node_modules/next/dist/bin/next start -H 0.0.0.0 -p 3000"
+  }
+}
