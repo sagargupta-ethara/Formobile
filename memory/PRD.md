@@ -85,6 +85,36 @@ budget — backend coverage was 84% with the above as the only criticals.
 **Imported, running, and reachable via the preview URL.** Awaiting next user
 instruction (feature work, bug fix, or deployment hardening).
 
+## Client change set — 2026-06-15 (all implemented + verified)
+1. **ProjectStatus 6 → 5**: removed `DESIGN`; enum is now `PLANNING, ACTIVE,
+   ON_HOLD, UPCOMING, COMPLETED`. Migrated DB (`prisma db push --accept-data-loss`,
+   no existing DESIGN rows). API (`/api/projects` POST+PATCH) rejects `DESIGN`
+   with 400; create/edit dropdowns + status tints updated. Verified via curl on
+   both localhost:8001 and the external preview URL.
+2. **Floor builder**: Stilt floor is now permanent (no toggle — shows an
+   "always included" badge) and **Upper Ground removed everywhere**. Default
+   builder = 4 above-ground + 1 basement + stilt + terrace = 7 floors. Verified
+   in the New Project modal + a 7-floor project create.
+3. **Rejected drawings hidden from DESIGNER**: `lib/access.ts` (`visibleFiles`
+   + new `rejectedVersionSet`) now strips rejected versions for designers;
+   `/api/tasks/[id]` filters the designer's `files[]`; `/api/files/[id]` returns
+   403 to a designer for a rejected version. ADMIN keeps full history. Designer
+   still sees reviewer comments/voice/photos. Verified end-to-end (5/5 asserts,
+   `backend/tests/test_rejected_file_flow.py`).
+4. **On-site approve/reject moved into a drawing-preview modal**: on
+   `/projects/[id]` Building tab, ONSITE task cards now have ONLY an
+   "Open Drawing" button (`data-testid=open-drawing-btn`). It opens
+   `components/DrawingReviewModal.tsx` (`drawing-review-modal`) which previews
+   the drawing in an iframe and holds Approve (`approve-btn`) / Reject
+   (`reject-btn` → reason `reject-reason-input` + voice/photos →
+   `confirm-reject-btn`). Verified live via screenshot + reject API.
+5. **"+ New Project" button**: present for ADMIN on `/projects`
+   (`data-testid=new-project-btn`), opens the create modal. Verified.
+
+> Note: testing-agent iteration_2 reported false failures on #1/#3 plus a
+> "persistence anomaly"; all three were disproven with live curl + psql + a
+> full lifecycle test. The running build is correct.
+
 ## Backlog (from repo README — Phase 2)
 - P1: Voice-note rejection memos UI polish
 - P1: Email / push notifications + escalation engine
