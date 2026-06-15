@@ -1,64 +1,58 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect } from "react";
-import { Inbox } from "lucide-react";
-import { STATUS_LABEL, statusStyle, priorityStyle } from "@/lib/format";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { DraftingCompass, X, Upload, UserCheck, CalendarDays } from "lucide-react";
+import { STATUS_LABEL, statusStyle, priorityStyle, fmtDateTime } from "@/lib/format";
 import { CountUp, EASE } from "@/components/motion";
 
 export function PageHeader({
   title,
   subtitle,
+  eyebrow = "Blueprint Flow",
   action,
 }: {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
+  eyebrow?: string;
   action?: React.ReactNode;
 }) {
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "flex-start",
+        alignItems: "flex-end",
         justifyContent: "space-between",
         gap: 16,
-        marginBottom: "1.6rem",
+        marginBottom: "1.7rem",
+        flexWrap: "wrap",
       }}
     >
       <div>
-        <motion.h1
-          initial={{ opacity: 0, y: 10 }}
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: EASE }}
-          style={{
-            fontSize: "1.7rem",
-            fontWeight: 750,
-            letterSpacing: "-0.025em",
-            color: "#0f172a",
-            margin: 0,
-          }}
+          transition={{ duration: 0.4, ease: EASE }}
+          className="eyebrow"
+          style={{ marginBottom: 8 }}
+        >
+          {eyebrow}
+        </motion.div>
+        <motion.h1
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE, delay: 0.05 }}
+          className="page-title"
         >
           {title}
         </motion.h1>
-        <motion.div
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 0.55, ease: EASE, delay: 0.12 }}
-          style={{
-            transformOrigin: "left",
-            height: 3,
-            width: 46,
-            borderRadius: 999,
-            marginTop: 8,
-            background: "linear-gradient(90deg, #3b82f6, #1e3a8a)",
-          }}
-        />
         {subtitle && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.18 }}
-            style={{ color: "#64748b", fontSize: "0.9rem", marginTop: 10 }}
+            style={{ color: "#64748b", fontSize: "0.92rem", marginTop: 8, marginBottom: 0 }}
           >
             {subtitle}
           </motion.p>
@@ -182,32 +176,46 @@ export function StatCard({
   icon?: React.ReactNode;
   tint?: string;
 }) {
+  const color = accent ?? "#0f172a";
   return (
     <div
       className="card card-hover"
       style={{
-        padding: "1.15rem 1.25rem",
+        padding: "1.15rem 1.25rem 1.25rem",
         display: "flex",
         flexDirection: "column",
-        gap: 10,
+        gap: 12,
         position: "relative",
         overflow: "hidden",
       }}
     >
+      {/* corner arc — drafting flourish */}
+      <svg
+        aria-hidden
+        width={74}
+        height={74}
+        style={{ position: "absolute", top: -10, right: -10, opacity: 0.55 }}
+        fill="none"
+      >
+        <circle cx={74} cy={0} r={56} stroke="#eef2f8" strokeWidth={1.5} />
+        <circle cx={74} cy={0} r={40} stroke="#f2f5fa" strokeWidth={1.5} />
+      </svg>
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 8,
+          position: "relative",
         }}
       >
         <span
           style={{
-            fontSize: "0.76rem",
+            fontSize: "0.72rem",
             color: "#64748b",
-            fontWeight: 600,
-            letterSpacing: "0.01em",
+            fontWeight: 650,
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
           }}
         >
           {label}
@@ -215,13 +223,14 @@ export function StatCard({
         {icon && (
           <span
             style={{
-              width: 30,
-              height: 30,
-              borderRadius: 9,
+              width: 32,
+              height: 32,
+              borderRadius: 10,
               display: "grid",
               placeItems: "center",
               background: tint ?? "#f1f5f9",
               color: accent ?? "#475569",
+              boxShadow: "inset 0 0 0 1px rgba(15,23,42,0.04)",
             }}
           >
             {icon}
@@ -230,15 +239,78 @@ export function StatCard({
       </div>
       <div
         style={{
-          fontSize: "2rem",
+          fontSize: "2.15rem",
           fontWeight: 750,
           letterSpacing: "-0.02em",
-          color: accent ?? "#0f172a",
+          color,
           lineHeight: 1,
+          position: "relative",
         }}
       >
         {typeof value === "number" ? <CountUp value={value} /> : value}
       </div>
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 3,
+          background: `linear-gradient(90deg, ${accent ?? "#cbd5e1"}, transparent 70%)`,
+          opacity: accent ? 0.5 : 0.35,
+        }}
+      />
+    </div>
+  );
+}
+
+/** Who uploads, who reviews, and the deadline — fully visible (wraps, never
+ *  truncates) so every dashboard shows the same clear picture. */
+export function TaskPeople({
+  assignees,
+  reviewer,
+  deadline,
+}: {
+  assignees: string[];
+  reviewer: string | null;
+  deadline?: string | null;
+}) {
+  const line: React.CSSProperties = {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 6,
+    fontSize: "0.78rem",
+    color: "#64748b",
+    lineHeight: 1.45,
+  };
+  const icon: React.CSSProperties = { flexShrink: 0, marginTop: 3, color: "#94a3b8" };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4, minWidth: 0 }}>
+      <span style={line}>
+        <Upload size={12} style={icon} />
+        <span style={{ overflowWrap: "anywhere" }}>
+          <b style={{ color: "#475569", fontWeight: 600 }}>
+            {assignees.length ? assignees.join(", ") : "Unassigned"}
+          </b>{" "}
+          uploads
+        </span>
+      </span>
+      <span style={line}>
+        <UserCheck size={12} style={icon} />
+        <span style={{ overflowWrap: "anywhere" }}>
+          <b style={{ color: "#475569", fontWeight: 600 }}>
+            {reviewer ?? "Any off-site member"}
+          </b>{" "}
+          reviews on site
+        </span>
+      </span>
+      {deadline && (
+        <span style={line}>
+          <CalendarDays size={12} style={icon} />
+          <span>due {fmtDateTime(deadline)}</span>
+        </span>
+      )}
     </div>
   );
 }
@@ -250,30 +322,40 @@ export function Empty({ children }: { children: React.ReactNode }) {
       animate={{ opacity: 1, y: 0 }}
       className="card"
       style={{
-        padding: "3.5rem 1rem",
+        padding: "3.8rem 1rem",
         textAlign: "center",
         color: "#94a3b8",
         fontSize: "0.92rem",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 12,
+        gap: 14,
+        borderStyle: "dashed",
+        borderColor: "#d8e0ec",
+        background:
+          "linear-gradient(180deg,#fff,#fcfdff), radial-gradient(60% 60% at 50% 0%, rgba(37,99,235,0.04), transparent)",
       }}
     >
-      <div
+      <motion.div
+        animate={{ y: [0, -5, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: 14,
-          background: "#f1f5f9",
+          width: 56,
+          height: 56,
+          borderRadius: 16,
+          background: "linear-gradient(135deg,#eef2f9,#e3eaf5)",
           display: "grid",
           placeItems: "center",
-          color: "#cbd5e1",
+          color: "#8da3c0",
+          boxShadow: "inset 0 1px 0 #fff, var(--shadow-sm)",
         }}
       >
-        <Inbox width={24} height={24} />
+        <DraftingCompass width={26} height={26} strokeWidth={1.6} />
+      </motion.div>
+      <div style={{ fontWeight: 600, color: "#64748b" }}>{children}</div>
+      <div style={{ fontSize: "0.78rem", color: "#b3bfd0" }}>
+        Nothing on the drawing board here yet.
       </div>
-      {children}
     </motion.div>
   );
 }
@@ -301,6 +383,11 @@ export function Modal({
   children: React.ReactNode;
   wide?: boolean;
 }) {
+  // Portal to <body>: page content lives inside stacking contexts (sticky
+  // topbar, .app-content) that would otherwise paint over the backdrop.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -309,7 +396,19 @@ export function Modal({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  return (
+  // Lock background scroll while the dialog is open.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -327,7 +426,7 @@ export function Modal({
             display: "grid",
             placeItems: "center",
             padding: "1rem",
-            zIndex: 60,
+            zIndex: 90,
           }}
         >
           <motion.div
@@ -347,21 +446,53 @@ export function Modal({
               boxShadow: "var(--shadow-lg)",
             }}
           >
-            <h2
+            <div
               style={{
-                fontSize: "1.15rem",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                marginBottom: "1.1rem",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: "1.15rem",
+                paddingBottom: "0.85rem",
+                borderBottom: "1px solid #f1f5f9",
               }}
             >
-              {title}
-            </h2>
+              <h2
+                className="display"
+                style={{
+                  fontSize: "1.3rem",
+                  letterSpacing: "-0.015em",
+                  margin: 0,
+                }}
+              >
+                {title}
+              </h2>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                style={{
+                  border: "1px solid var(--color-line)",
+                  background: "#fff",
+                  borderRadius: 9,
+                  width: 30,
+                  height: 30,
+                  display: "grid",
+                  placeItems: "center",
+                  cursor: "pointer",
+                  color: "#64748b",
+                  flexShrink: 0,
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
             {children}
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

@@ -9,43 +9,54 @@ const createSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   role: z.enum(["ADMIN", "DESIGNER", "ONSITE"]),
+  department: z.string().optional().nullable(),
   specializationId: z.string().optional().nullable(),
   password: z.string().min(6),
 });
 
-// GET /api/users?role=DESIGNER  — admins list everyone; others may list
-// designers/onsite (needed to populate assignment pickers), never with secrets.
+// GET /api/users?assignable=1 | ?role=… — directories for pickers and the
+// Team page. `assignable` = everyone who can receive a task (non-admins).
 export async function GET(req: Request) {
   try {
     const user = await requireUser();
-    const role = new URL(req.url).searchParams.get("role") || undefined;
+    const sp = new URL(req.url).searchParams;
+    const role = sp.get("role") || undefined;
+    const assignable = sp.get("assignable") === "1";
 
     if (user.role !== "ADMIN") {
-      // non-admins can only fetch designer/onsite directories for pickers
       const users = await prisma.user.findMany({
         where: {
           status: "ACTIVE",
-          role: role === "DESIGNER" || role === "ONSITE" ? role : undefined,
+          ...(assignable
+            ? { role: { not: "ADMIN" as const } }
+            : { role: role === "DESIGNER" || role === "ONSITE" ? role : undefined }),
         },
-        select: { id: true, name: true, role: true, specializationId: true },
-        orderBy: { name: "asc" },
+        select: { id: true, name: true, role: true, department: true, specializationId: true },
+        orderBy: [{ department: "asc" }, { name: "asc" }],
       });
       return json({ users });
     }
 
     const users = await prisma.user.findMany({
-      where: role ? { role: role as never } : undefined,
+      where: assignable
+        ? { status: "ACTIVE", role: { not: "ADMIN" } }
+        : role
+        ? { role: role as never }
+        : undefined,
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
         role: true,
+        department: true,
         status: true,
         specialization: { select: { id: true, name: true } },
         createdAt: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: assignable
+        ? [{ department: "asc" }, { name: "asc" }]
+        : { createdAt: "desc" },
     });
     return json({ users });
   } catch (e) {
@@ -69,6 +80,7 @@ export async function POST(req: Request) {
         email: data.email.toLowerCase().trim(),
         phone: data.phone,
         role: data.role,
+        department: data.department || null,
         specializationId: data.specializationId || null,
         passwordHash: await hashPassword(data.password),
       },

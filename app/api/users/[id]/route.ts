@@ -6,7 +6,10 @@ import { audit } from "@/lib/audit";
 
 const patchSchema = z.object({
   name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
   phone: z.string().optional().nullable(),
+  role: z.enum(["ADMIN", "DESIGNER", "ONSITE"]).optional(),
+  department: z.string().optional().nullable(),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
   specializationId: z.string().optional().nullable(),
   password: z.string().min(6).optional(),
@@ -21,11 +24,20 @@ export async function PATCH(
     const { id } = await params;
     const data = patchSchema.parse(await req.json());
 
+    if (data.email) {
+      const clash = await prisma.user.findUnique({ where: { email: data.email } });
+      if (clash && clash.id !== id)
+        return json({ error: "Another user already has this email" }, 409);
+    }
+
     const user = await prisma.user.update({
       where: { id },
       data: {
         name: data.name,
+        email: data.email,
         phone: data.phone,
+        role: data.role,
+        department: data.department === undefined ? undefined : data.department || null,
         status: data.status,
         specializationId:
           data.specializationId === undefined

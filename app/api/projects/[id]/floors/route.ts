@@ -26,12 +26,20 @@ export async function POST(
   try {
     await requireRole("ADMIN");
     const { id } = await params;
-    const { floorName } = z
-      .object({ floorName: z.string().min(1) })
+    const { floorName, floorType } = z
+      .object({
+        floorName: z.string().min(1),
+        floorType: z.enum(["BASEMENT", "STILT", "FLOOR", "TERRACE"]).optional(),
+      })
       .parse(await req.json());
     const count = await prisma.floor.count({ where: { projectId: id } });
     const floor = await prisma.floor.create({
-      data: { projectId: id, floorName: floorName.trim(), order: count },
+      data: {
+        projectId: id,
+        floorName: floorName.trim(),
+        floorType: floorType ?? "FLOOR",
+        order: count,
+      },
     });
     return json({ floor }, 201);
   } catch (e) {

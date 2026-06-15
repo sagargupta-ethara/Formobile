@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Compass, ArrowRight, Check } from "lucide-react";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const INTRO_MS = 3400; // how long the fullscreen skyline plays before revealing the form
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +15,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  // Cinematic entrance: the skyline owns the whole screen, then sweeps left
+  // (desktop) or slides away (mobile) to reveal the sign-in panel.
+  const [phase, setPhase] = useState<"intro" | "split">("intro");
+  const [isMobile, setIsMobile] = useState(false);
+  const reduced = useReducedMotion();
+  const intro = phase === "intro";
+
+  useEffect(() => {
+    setIsMobile(window.matchMedia("(max-width: 640px)").matches);
+    if (reduced) {
+      setPhase("split");
+      return;
+    }
+    const t = setTimeout(() => setPhase("split"), INTRO_MS);
+    return () => clearTimeout(t);
+  }, [reduced]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +46,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.error || "Login failed");
       setSuccess(true);
       setTimeout(() => {
-        router.replace("/dashboard");
+        router.replace("/projects");
         router.refresh();
       }, 1500);
     } catch (err) {
@@ -38,24 +55,41 @@ export default function LoginPage() {
     }
   }
 
-  function quickFill(addr: string) {
-    setEmail(addr);
-    setPassword("password123");
-  }
-
   return (
     <>
-    <div className="login-split">
-      {/* -------- Left: animated blueprint -------- */}
-      <div
-        className="login-art"
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        overflow: "hidden",
+        background: "var(--color-canvas)",
+      }}
+    >
+      {/* -------- Art panel: fullscreen intro, then the left half -------- */}
+      <AnimatePresence>
+      {(!isMobile || intro) && (
+      <motion.div
+        key="art"
+        onClick={() => setPhase("split")}
+        initial={false}
+        animate={isMobile ? { x: 0 } : { width: intro ? "100%" : "52.5%" }}
+        exit={{ x: "-100%" }}
+        transition={{ duration: 0.95, ease: EASE }}
         style={{
-          position: "relative",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
           color: "#e2e8f0",
           background: "linear-gradient(155deg, #0b1220 0%, #111827 45%, #0a0f1c 100%)",
+          cursor: intro ? "pointer" : "default",
+          ...(isMobile
+            ? { position: "fixed" as const, inset: 0, zIndex: 60 }
+            : {
+                position: "relative" as const,
+                width: "100%",
+                flexShrink: 0,
+                minHeight: "100vh",
+              }),
         }}
       >
         {/* blueprint grid */}
@@ -87,6 +121,21 @@ export default function LoginPage() {
             filter: "blur(30px)",
           }}
         />
+        <motion.div
+          aria-hidden
+          animate={{ x: [0, 60, 0], y: [0, -30, 0], opacity: [0.18, 0.3, 0.18] }}
+          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: "absolute",
+            left: "8%",
+            bottom: "14%",
+            width: 340,
+            height: 340,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(168,118,62,0.22), transparent 60%)",
+            filter: "blur(40px)",
+          }}
+        />
 
         {/* logo */}
         <motion.div
@@ -115,7 +164,7 @@ export default function LoginPage() {
             <Compass size={21} color="#fff" />
           </div>
           <div>
-            <div style={{ fontWeight: 700, color: "#fff", fontSize: "1.02rem" }}>
+            <div className="display" style={{ color: "#fff", fontSize: "1.1rem" }}>
               Blueprint Flow
             </div>
             <div style={{ fontSize: "0.66rem", color: "#7c8aa3", letterSpacing: "0.06em" }}>
@@ -124,23 +173,88 @@ export default function LoginPage() {
           </div>
         </motion.div>
 
-        {/* the animated drawing */}
+        {/* the animated skyline */}
         <div
           style={{
             position: "relative",
             flex: 1,
             display: "grid",
             placeItems: "center",
-            padding: "0 2rem 2rem",
+            padding: "0 2rem",
+            minHeight: 0,
           }}
         >
-          <BlueprintArt />
+          <SkylineArt />
         </div>
-      </div>
 
-      {/* -------- Right: form -------- */}
+        {/* headline + feature chips */}
+        <div style={{ position: "relative", padding: "0.5rem 2.8rem 2.4rem" }}>
+          <motion.h1
+            className="display"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: EASE, delay: 0.3 }}
+            style={{
+              color: "#fff",
+              fontSize: "2.05rem",
+              lineHeight: 1.14,
+              margin: 0,
+              letterSpacing: "-0.015em",
+            }}
+          >
+            From blueprint
+            <br />
+            to build.
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.55 }}
+            style={{ color: "#8ea2c0", fontSize: "0.92rem", margin: "10px 0 18px", maxWidth: 380 }}
+          >
+            One workspace for design tasks, drawing versions and on-site approvals.
+          </motion.p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {[
+              "Floor-by-floor tracking",
+              "Versioned drawings",
+              "On-site sign-off",
+            ].map((f, i) => (
+              <motion.span
+                key={f}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: EASE, delay: 0.7 + i * 0.12 }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: "0.74rem",
+                  fontWeight: 600,
+                  color: "#bcd0ec",
+                  padding: "0.38rem 0.7rem",
+                  borderRadius: 999,
+                  background: "rgba(59,130,246,0.1)",
+                  border: "1px solid rgba(96,165,250,0.25)",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                <Check size={12} color="#60a5fa" /> {f}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+
+      </motion.div>
+      )}
+      </AnimatePresence>
+
+      {/* -------- Right: form (revealed after the intro) -------- */}
       <div
         style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: "100vh",
           display: "grid",
           placeItems: "center",
           padding: "2rem",
@@ -148,13 +262,20 @@ export default function LoginPage() {
         }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: EASE, delay: 0.15 }}
+          initial={{ opacity: 0, y: 26, scale: 0.97 }}
+          animate={
+            intro
+              ? { opacity: 0, y: 26, scale: 0.97 }
+              : { opacity: 1, y: 0, scale: 1 }
+          }
+          transition={{ duration: 0.65, ease: EASE, delay: intro ? 0 : 0.4 }}
           className="card"
           style={{ width: "100%", maxWidth: 400, padding: "2.2rem" }}
         >
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 750, letterSpacing: "-0.02em" }}>
+          <div className="eyebrow" style={{ marginBottom: 8 }}>
+            Workspace Sign-in
+          </div>
+          <h2 className="display" style={{ fontSize: "1.65rem", margin: 0 }}>
             Welcome back
           </h2>
           <p style={{ color: "#64748b", fontSize: "0.88rem", marginTop: 4, marginBottom: 22 }}>
@@ -171,7 +292,6 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 required
-                autoFocus
               />
             </div>
             <div style={{ marginBottom: 16 }}>
@@ -208,7 +328,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid #eef2f7" }}>
+          <div style={{ marginTop: 20, paddingTop: 14, borderTop: "1px solid #eef2f7" }}>
             <div
               style={{
                 fontSize: "0.72rem",
@@ -217,18 +337,21 @@ export default function LoginPage() {
                 fontWeight: 600,
               }}
             >
-              DEMO ACCOUNTS · tap to fill
+              QUICK LOGIN · tap to fill
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {[
-                { label: "Admin", email: "admin@blueprint.test" },
-                { label: "Designer", email: "designer@blueprint.test" },
-                { label: "On-Site", email: "onsite@blueprint.test" },
+                { label: "Admin", email: "manish.uppal@blueprintflow.in" },
+                { label: "Designer", email: "amarpreet.padam@blueprintflow.in" },
+                { label: "On-Site", email: "sudama@blueprintflow.in" },
               ].map((a) => (
                 <button
                   key={a.email}
                   type="button"
-                  onClick={() => quickFill(a.email)}
+                  onClick={() => {
+                    setEmail(a.email);
+                    setPassword("password123");
+                  }}
                   className="btn btn-ghost"
                   style={{ fontSize: "0.76rem", padding: "0.4rem 0.7rem" }}
                 >
@@ -322,103 +445,224 @@ function SuccessOverlay() {
 }
 
 /* -------------------------------------------------------------- *
- *  Self-drawing architectural blueprint (floor plan + compass)   *
+ *  Self-drafting city skyline: tower under design, working crane, *
+ *  windows that come alive, beacon, clouds, compass.              *
  * -------------------------------------------------------------- */
-function BlueprintArt() {
+function SkylineArt() {
   const stroke = "#7cb0ff";
   const faint = "#3b6fd4";
 
-  // each line draws forward then erases, looping — like a plan being drafted
-  const draw = (i: number) => ({
+  // outlines draft themselves once, then the scene stays alive
+  const draw = (delay: number, dur = 1.4) => ({
     initial: { pathLength: 0, opacity: 0 },
     animate: { pathLength: 1, opacity: 0.95 },
     transition: {
-      pathLength: {
-        duration: 2.4,
-        ease: EASE,
-        repeat: Infinity,
-        repeatType: "reverse" as const,
-        repeatDelay: 1.2,
-        delay: i * 0.25,
-      },
-      opacity: { duration: 0.6, delay: i * 0.25 },
+      pathLength: { duration: dur, ease: EASE, delay },
+      opacity: { duration: 0.4, delay },
     },
   });
 
+  // window grid; a few stay flickering forever so the city feels inhabited
+  function windowGrid(
+    x0: number,
+    y0: number,
+    cols: number,
+    rows: number,
+    baseDelay: number,
+    w = 9,
+    h = 7,
+    gx = 16,
+    gy = 15
+  ) {
+    const cells = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const lit = idx % 4 === 0;
+        const flicker = idx % 7 === 0;
+        cells.push(
+          <motion.rect
+            key={`${x0}-${idx}`}
+            x={x0 + c * gx}
+            y={y0 + r * gy}
+            width={w}
+            height={h}
+            rx={1}
+            fill={lit ? "#fbbf24" : "#93c5fd"}
+            initial={{ opacity: 0 }}
+            animate={
+              flicker
+                ? { opacity: [0, lit ? 0.9 : 0.4, 0.15, lit ? 0.9 : 0.4] }
+                : { opacity: lit ? 0.85 : 0.35 }
+            }
+            transition={
+              flicker
+                ? {
+                    duration: 5 + (idx % 3),
+                    times: [0, 0.2, 0.6, 1],
+                    repeat: Infinity,
+                    delay: baseDelay + idx * 0.05,
+                  }
+                : { duration: 0.5, delay: baseDelay + idx * 0.05 }
+            }
+          />
+        );
+      }
+    }
+    return cells;
+  }
+
   return (
     <svg
-      viewBox="0 0 420 420"
+      viewBox="0 0 520 400"
       width="100%"
-      style={{ maxWidth: 460, position: "relative", zIndex: 1 }}
+      style={{ maxWidth: 540, position: "relative", zIndex: 1 }}
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {/* dimension line (top) */}
-      <motion.path d="M60 46 H360" stroke={faint} strokeWidth={1} {...draw(0)} />
-      <motion.path d="M60 40 V52 M360 40 V52 M210 41 V51" stroke={faint} strokeWidth={1} {...draw(0)} />
+      {/* drifting clouds */}
+      <motion.g
+        animate={{ x: [0, 46, 0] }}
+        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+        opacity={0.1}
+      >
+        <ellipse cx={120} cy={60} rx={46} ry={11} fill="#bfdbfe" />
+        <ellipse cx={152} cy={50} rx={30} ry={9} fill="#bfdbfe" />
+      </motion.g>
+      <motion.g
+        animate={{ x: [0, -38, 0] }}
+        transition={{ duration: 32, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+        opacity={0.08}
+      >
+        <ellipse cx={400} cy={42} rx={52} ry={12} fill="#bfdbfe" />
+        <ellipse cx={362} cy={33} rx={28} ry={8} fill="#bfdbfe" />
+      </motion.g>
 
-      {/* outer walls */}
+      {/* ground line */}
+      <motion.path d="M16 348 H504" stroke={stroke} strokeWidth={2} {...draw(0.1, 1.2)} />
       <motion.path
-        d="M60 80 H360 V340 H60 Z"
+        d="M30 356 l10 -8 M62 356 l10 -8 M94 356 l10 -8 M126 356 l10 -8 M158 356 l10 -8 M190 356 l10 -8 M222 356 l10 -8 M254 356 l10 -8 M286 356 l10 -8 M318 356 l10 -8 M350 356 l10 -8 M382 356 l10 -8 M414 356 l10 -8 M446 356 l10 -8 M478 356 l10 -8"
+        stroke={faint}
+        strokeWidth={1}
+        opacity={0.5}
+        {...draw(0.4, 1.6)}
+      />
+
+      {/* left building */}
+      <motion.path d="M52 348 V196 H164 V348" stroke={stroke} strokeWidth={2} {...draw(0.5)} />
+      <motion.path d="M52 218 H164" stroke={faint} strokeWidth={1} {...draw(0.9, 0.8)} />
+      {windowGrid(70, 232, 5, 7, 1.2, 9, 7, 17, 15)}
+
+      {/* main tower */}
+      <motion.path
+        d="M204 348 V96 H316 V348"
         stroke={stroke}
         strokeWidth={2.5}
-        {...draw(1)}
+        {...draw(0.7, 1.7)}
       />
-
-      {/* interior partitions */}
-      <motion.path d="M210 80 V210" stroke={stroke} strokeWidth={2} {...draw(2)} />
-      <motion.path d="M210 210 H360" stroke={stroke} strokeWidth={2} {...draw(3)} />
-      <motion.path d="M60 250 H150 V340" stroke={stroke} strokeWidth={2} {...draw(4)} />
-
-      {/* door swing arc */}
-      <motion.path d="M210 150 A40 40 0 0 1 250 110" stroke={stroke} strokeWidth={1.5} {...draw(5)} />
-      <motion.path d="M150 295 A35 35 0 0 0 115 260" stroke={stroke} strokeWidth={1.5} {...draw(5)} />
-
-      {/* round column */}
+      {/* parapet + setback crown */}
+      <motion.path d="M198 96 H322" stroke={stroke} strokeWidth={2.5} {...draw(1.2, 0.6)} />
+      <motion.path d="M232 96 V76 H288 V96" stroke={stroke} strokeWidth={2} {...draw(1.4, 0.6)} />
+      {/* antenna + beacon */}
+      <motion.path d="M260 76 V46" stroke={stroke} strokeWidth={1.6} {...draw(1.7, 0.4)} />
       <motion.circle
-        cx={285}
-        cy={285}
-        r={26}
-        stroke={stroke}
-        strokeWidth={1.8}
-        {...draw(6)}
+        cx={260}
+        cy={42}
+        r={3.6}
+        fill="#f87171"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0.15, 1, 0.15] }}
+        transition={{ duration: 1.8, repeat: Infinity, delay: 2 }}
       />
-      <motion.path d="M285 259 V311 M259 285 H311" stroke={faint} strokeWidth={1} {...draw(6)} />
+      <motion.circle
+        cx={260}
+        cy={42}
+        r={3.6}
+        stroke="#f87171"
+        initial={{ opacity: 0, scale: 1 }}
+        animate={{ opacity: [0.5, 0], scale: [1, 2.6] }}
+        transition={{ duration: 1.8, repeat: Infinity, delay: 2 }}
+        style={{ transformOrigin: "260px 42px" }}
+      />
+      {/* entrance */}
+      <motion.path d="M248 348 V322 H272 V348" stroke={stroke} strokeWidth={1.8} {...draw(1.6, 0.5)} />
+      <motion.path d="M260 322 V348" stroke={faint} strokeWidth={1} {...draw(1.8, 0.4)} />
+      <motion.path d="M238 316 H282" stroke={stroke} strokeWidth={1.6} {...draw(1.9, 0.4)} />
+      {windowGrid(222, 116, 5, 12, 1.5, 9, 7, 17, 16)}
 
-      {/* stairs */}
+      {/* right building — stepped massing */}
       <motion.path
-        d="M110 110 H170 M110 124 H170 M110 138 H170 M110 152 H170 M110 110 V152"
+        d="M356 348 V172 H420 V216 H452 V348"
         stroke={stroke}
-        strokeWidth={1.4}
-        {...draw(7)}
+        strokeWidth={2}
+        {...draw(0.9, 1.5)}
+      />
+      {windowGrid(370, 190, 3, 9, 1.7, 9, 7, 17, 16)}
+      {windowGrid(426, 232, 1, 6, 2.1, 9, 7, 17, 17)}
+
+      {/* tower crane, gently slewing */}
+      <motion.g
+        style={{ transformOrigin: "480px 120px" }}
+        animate={{ rotate: [0, -2.2, 0] }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2.4 }}
+      >
+        {/* jib + counter-jib */}
+        <motion.path d="M390 120 H504" stroke={stroke} strokeWidth={1.8} {...draw(1.9, 0.7)} />
+        <motion.path
+          d="M480 104 L440 120 M480 104 L504 120 M480 104 L390 120"
+          stroke={faint}
+          strokeWidth={1}
+          {...draw(2.1, 0.7)}
+        />
+        {/* counterweight */}
+        <motion.rect
+          x={494}
+          y={120}
+          width={10}
+          height={12}
+          stroke={stroke}
+          strokeWidth={1.4}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ delay: 2.4 }}
+        />
+        {/* trolley cable + hook, bobbing */}
+        <motion.g
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 2.8 }}
+        >
+          <motion.path d="M414 120 V188" stroke={faint} strokeWidth={1} {...draw(2.3, 0.5)} />
+          <motion.path
+            d="M414 188 l-6 8 h12 z"
+            stroke={stroke}
+            strokeWidth={1.3}
+            {...draw(2.5, 0.3)}
+          />
+        </motion.g>
+      </motion.g>
+      {/* crane mast */}
+      <motion.path d="M474 348 V104 M486 348 V104" stroke={stroke} strokeWidth={1.6} {...draw(1.5, 1)} />
+      <motion.path
+        d="M474 332 l12 -12 M474 308 l12 -12 M474 284 l12 -12 M474 260 l12 -12 M474 236 l12 -12 M474 212 l12 -12 M474 188 l12 -12 M474 164 l12 -12 M474 140 l12 -12"
+        stroke={faint}
+        strokeWidth={1}
+        {...draw(1.8, 1)}
       />
 
-      {/* corner nodes — gentle pulse */}
-      {[
-        [60, 80], [360, 80], [360, 340], [60, 340],
-      ].map(([cx, cy], i) => (
-        <motion.circle
-          key={i}
-          cx={cx}
-          cy={cy}
-          r={3.5}
-          fill="#93c5fd"
-          initial={{ opacity: 0.3, scale: 0.8 }}
-          animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.3, 0.8] }}
-          transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.4 }}
-        />
-      ))}
+      {/* dimension line above tower */}
+      <motion.path d="M204 70 H316" stroke={faint} strokeWidth={1} {...draw(2.2, 0.6)} />
+      <motion.path d="M204 64 V76 M316 64 V76" stroke={faint} strokeWidth={1} {...draw(2.3, 0.4)} />
 
-      {/* slowly rotating compass rose */}
+      {/* compass rose */}
       <motion.g
-        style={{ transformOrigin: "350px 110px" }}
+        style={{ transformOrigin: "64px 92px" }}
         animate={{ rotate: 360 }}
         transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
       >
-        <circle cx={350} cy={110} r={22} stroke={faint} strokeWidth={1} opacity={0.6} />
-        <path d="M350 90 L356 110 L350 130 L344 110 Z" fill="#93c5fd" opacity={0.9} />
-        <path d="M330 110 H370 M350 90 V130" stroke={faint} strokeWidth={0.8} opacity={0.5} />
+        <circle cx={64} cy={92} r={22} stroke={faint} strokeWidth={1} opacity={0.6} />
+        <path d="M64 72 L70 92 L64 112 L58 92 Z" fill="#93c5fd" opacity={0.9} />
+        <path d="M44 92 H84 M64 72 V112" stroke={faint} strokeWidth={0.8} opacity={0.5} />
       </motion.g>
     </svg>
   );

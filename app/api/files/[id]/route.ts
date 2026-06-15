@@ -18,9 +18,11 @@ export async function GET(
         task: {
           select: {
             designerId: true,
+            reviewerId: true,
             status: true,
             currentVersion: true,
             category: { select: { specializationId: true } },
+            assignees: { select: { userId: true } },
           },
         },
       },
@@ -28,10 +30,13 @@ export async function GET(
     if (!file) throw new ApiError(404, "File not found");
 
     const { task } = file;
-    if (user.role === "DESIGNER" && task.designerId !== user.id) {
+    const isAssignee =
+      task.designerId === user.id ||
+      task.assignees.some((a) => a.userId === user.id);
+    if (user.role === "DESIGNER" && !isAssignee) {
       throw new ApiError(403, "Forbidden");
     }
-    if (user.role === "ONSITE") {
+    if (user.role === "ONSITE" && !isAssignee && task.reviewerId !== user.id) {
       // routing + the hide-superseded-versions rule, enforced at download time
       if (!onsiteIsRouted(user, task.category))
         throw new ApiError(403, "Forbidden");

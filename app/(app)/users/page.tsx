@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Plus, Pencil } from "lucide-react";
 import {
   api,
   PageHeader,
@@ -9,8 +10,10 @@ import {
   Badge,
   Modal,
   ErrorText,
+  Avatar,
 } from "@/components/ui";
 import { fmtDate } from "@/lib/format";
+import Select from "@/components/Select";
 
 interface User {
   id: string;
@@ -18,6 +21,7 @@ interface User {
   email: string;
   phone: string | null;
   role: string;
+  department: string | null;
   status: string;
   specialization: { id: string; name: string } | null;
   createdAt: string;
@@ -37,6 +41,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[] | null>(null);
   const [specs, setSpecs] = useState<Spec[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
 
   async function load() {
     const [u, s] = await Promise.all([
@@ -64,11 +69,12 @@ export default function UsersPage() {
   return (
     <>
       <PageHeader
+        eyebrow="People"
         title="Team"
         subtitle="Designers, on-site reviewers and admins"
         action={
           <button className="btn btn-primary" onClick={() => setOpen(true)}>
-            + New User
+            <Plus /> New User
           </button>
         }
       />
@@ -78,21 +84,51 @@ export default function UsersPage() {
       ) : users.length === 0 ? (
         <Empty>No users yet.</Empty>
       ) : (
-        <div className="card" style={{ overflow: "hidden" }}>
-          {users.map((u, i) => (
+        // grouped by department
+        [...users
+          .reduce((m, u) => {
+            const key =
+              u.department ?? (ROLE_LABEL[u.role] ? `${ROLE_LABEL[u.role]}s` : "Other");
+            if (!m.has(key)) m.set(key, []);
+            m.get(key)!.push(u);
+            return m;
+          }, new Map<string, User[]>())
+          .entries()].map(([dept, list]) => (
+        <div key={dept} className="card" style={{ overflow: "hidden", marginBottom: 14 }}>
+          <div
+            className="user-row list-head"
+            style={{ padding: "0.6rem 1.1rem" }}
+          >
+            <span>{dept}</span>
+            <span>Role</span>
+            <span>Joined</span>
+            <span style={{ textAlign: "right" }}>Status</span>
+          </div>
+          {list.map((u, i) => (
             <div
               key={u.id}
-              className="user-row"
+              className="user-row row-link"
               style={{
                 padding: "0.85rem 1.1rem",
                 borderTop: i === 0 ? "none" : "1px solid #f1f5f9",
               }}
             >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{u.name}</div>
-                <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
-                  {u.email}
-                  {u.phone ? ` · ${u.phone}` : ""}
+              <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                <Avatar name={u.name} size={36} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{u.name}</div>
+                  <div
+                    style={{
+                      fontSize: "0.78rem",
+                      color: "#94a3b8",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {u.email}
+                    {u.phone ? ` · ${u.phone}` : ""}
+                  </div>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
@@ -104,29 +140,41 @@ export default function UsersPage() {
               <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
                 Joined {fmtDate(u.createdAt)}
               </div>
-              <button
-                className="btn btn-ghost"
-                onClick={() => toggle(u)}
-                style={{ justifySelf: "end" }}
-              >
-                <Badge
-                  bg={u.status === "ACTIVE" ? "#dcfce7" : "#fee2e2"}
-                  fg={u.status === "ACTIVE" ? "#15803d" : "#b91c1c"}
+              <div style={{ display: "flex", gap: 6, justifySelf: "end", alignItems: "center" }}>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setEditing(u)}
+                  title="Edit user"
+                  style={{ padding: "0.45rem 0.6rem" }}
                 >
-                  {u.status === "ACTIVE" ? "Active" : "Inactive"}
-                </Badge>
-              </button>
+                  <Pencil size={14} />
+                </button>
+                <button className="btn btn-ghost" onClick={() => toggle(u)}>
+                  <Badge
+                    bg={u.status === "ACTIVE" ? "#dcfce7" : "#fee2e2"}
+                    fg={u.status === "ACTIVE" ? "#15803d" : "#b91c1c"}
+                  >
+                    {u.status === "ACTIVE" ? "Active" : "Inactive"}
+                  </Badge>
+                </button>
+              </div>
             </div>
           ))}
         </div>
+        ))
       )}
 
-      {open && (
-        <NewUserModal
+      {(open || editing) && (
+        <UserModal
+          user={editing}
           specs={specs}
-          onClose={() => setOpen(false)}
-          onCreated={() => {
+          onClose={() => {
             setOpen(false);
+            setEditing(null);
+          }}
+          onSaved={() => {
+            setOpen(false);
+            setEditing(null);
             load();
           }}
         />
@@ -135,21 +183,27 @@ export default function UsersPage() {
   );
 }
 
-function NewUserModal({
+/** Create + edit in one dialog — every field is modifiable, including the
+ *  password (admin reset: leave blank on edit to keep the current one). */
+function UserModal({
+  user,
   specs,
   onClose,
-  onCreated,
+  onSaved,
 }: {
+  user: User | null;
   specs: Spec[];
   onClose: () => void;
-  onCreated: () => void;
+  onSaved: () => void;
 }) {
+  const editing = !!user;
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    role: "DESIGNER",
-    specializationId: "",
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    phone: user?.phone ?? "",
+    role: user?.role ?? "DESIGNER",
+    department: user?.department ?? "",
+    specializationId: user?.specialization?.id ?? "",
     password: "",
   });
   const [error, setError] = useState("");
@@ -163,15 +217,17 @@ function NewUserModal({
     setError("");
     setSaving(true);
     try {
-      await api("/api/users", {
-        method: "POST",
+      const body: Record<string, unknown> = {
+        ...form,
+        specializationId: form.specializationId || null,
+      };
+      if (editing && !form.password) delete body.password;
+      await api(editing ? `/api/users/${user!.id}` : "/api/users", {
+        method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          specializationId: form.specializationId || null,
-        }),
+        body: JSON.stringify(body),
       });
-      onCreated();
+      onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
       setSaving(false);
@@ -179,7 +235,7 @@ function NewUserModal({
   }
 
   return (
-    <Modal open onClose={onClose} title="New User" wide>
+    <Modal open onClose={onClose} title={editing ? `Edit — ${user!.name}` : "New User"} wide>
       <form onSubmit={submit}>
         <ErrorText>{error}</ErrorText>
         <div className="form-grid">
@@ -193,28 +249,61 @@ function NewUserModal({
             <input className="input" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
           </Field>
           <Field label="Role *">
-            <select className="select" value={form.role} onChange={(e) => set("role", e.target.value)}>
-              <option value="DESIGNER">Designer</option>
-              <option value="ONSITE">On-Site Reviewer</option>
-              <option value="ADMIN">Admin</option>
-            </select>
+            <Select
+              value={form.role}
+              onChange={(v) => set("role", v)}
+              options={[
+                { value: "DESIGNER", label: "Designer" },
+                { value: "ONSITE", label: "On-Site Reviewer" },
+                { value: "ADMIN", label: "Admin" },
+              ]}
+            />
+          </Field>
+          <Field label="Department">
+            <Select
+              value={form.department}
+              onChange={(v) => set("department", v)}
+              placeholder="Pick or type a new department…"
+              creatable
+              options={[
+                "Interior Design",
+                "Architecture · Structure",
+                "Site Head",
+                "Site Supervisor",
+                "Carpentry",
+                "MEP · Plumbing",
+                "MEP · Electrical",
+                "MEP · HVAC",
+                "Admin",
+              ].map((d) => ({ value: d, label: d }))}
+            />
           </Field>
           <Field label="Specialization">
-            <select className="select" value={form.specializationId} onChange={(e) => set("specializationId", e.target.value)}>
-              <option value="">None</option>
-              {specs.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            <Select
+              value={form.specializationId}
+              onChange={(v) => set("specializationId", v)}
+              placeholder="None"
+              options={[
+                { value: "", label: "None" },
+                ...specs.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
           </Field>
-          <Field label="Password *">
-            <input className="input" type="text" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="min 6 chars" required />
+          <Field label={editing ? "Reset Password" : "Password *"}>
+            <input
+              className="input"
+              type="text"
+              value={form.password}
+              onChange={(e) => set("password", e.target.value)}
+              placeholder={editing ? "leave blank to keep current" : "min 6 chars"}
+              required={!editing}
+            />
           </Field>
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" disabled={saving}>
-            {saving ? "Creating…" : "Create User"}
+            {saving ? "Saving…" : editing ? "Save Changes" : "Create User"}
           </button>
         </div>
       </form>

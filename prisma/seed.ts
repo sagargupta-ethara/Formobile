@@ -1,5 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, FloorType } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { drawingRegister, guessSpecialization, guessDiscipline } from "../lib/drawingTypes";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -39,28 +40,27 @@ async function main() {
     specs[name] = s.id;
   }
 
-  // ---- Design categories ----
-  const cats: { name: string; spec?: string }[] = [
-    { name: "Electrical Design", spec: "Electrical" },
-    { name: "Plumbing Design", spec: "Plumbing" },
-    { name: "Furniture Layout", spec: "Furniture" },
-    { name: "Seating Layout", spec: "Furniture" },
-    { name: "HVAC Design", spec: "HVAC" },
-    { name: "Lighting Design", spec: "Lighting" },
-    { name: "Interior Design", spec: "Interior" },
-    { name: "False Ceiling Design", spec: "Interior" },
-    { name: "Landscape Design", spec: "Landscape" },
-    { name: "Fire Safety Design", spec: "Civil" },
-    { name: "Network Cabling Design", spec: "Electrical" },
-  ];
-  const catId: Record<string, string> = {};
-  for (const c of cats) {
-    const created = await prisma.designCategory.upsert({
-      where: { name: c.name },
-      update: {},
-      create: { name: c.name, specializationId: c.spec ? specs[c.spec] : null },
+  // ---- Master drawing register (template, projectId = null) ----
+  for (const d of drawingRegister()) {
+    const specName = guessSpecialization(d.name);
+    const existing = await prisma.designCategory.findFirst({
+      where: { projectId: null, name: d.name },
     });
-    catId[c.name] = created.id;
+    if (existing) {
+      await prisma.designCategory.update({
+        where: { id: existing.id },
+        data: { appliesTo: d.appliesTo as FloorType[] },
+      });
+    } else {
+      await prisma.designCategory.create({
+        data: {
+          name: d.name,
+          appliesTo: d.appliesTo as FloorType[],
+          specializationId: specName ? specs[specName] : null,
+          discipline: guessDiscipline(d.name),
+        },
+      });
+    }
   }
 
   // ---- Users ----
@@ -131,7 +131,15 @@ async function main() {
   if (existing) {
     await prisma.project.delete({ where: { id: existing.id } });
   }
-  const floorNames = ["Basement", "Ground Floor", "First Floor", "Second Floor", "Third Floor"];
+  const floorDefs: { floorName: string; floorType: FloorType }[] = [
+    { floorName: "Basement", floorType: "BASEMENT" },
+    { floorName: "Stilt Floor", floorType: "STILT" },
+    { floorName: "Ground Floor", floorType: "FLOOR" },
+    { floorName: "First Floor", floorType: "FLOOR" },
+    { floorName: "Second Floor", floorType: "FLOOR" },
+    { floorName: "Third Floor", floorType: "FLOOR" },
+    { floorName: "Terrace", floorType: "TERRACE" },
+  ];
   const project = await prisma.project.create({
     data: {
       name: "ABC Corporate Tower",
@@ -142,12 +150,36 @@ async function main() {
       expectedCompletion: new Date("2026-12-15"),
       status: "ACTIVE",
       floors: {
-        create: floorNames.map((floorName, order) => ({ floorName, order })),
+        create: floorDefs.map((f, order) => ({ ...f, order })),
       },
     },
     include: { floors: true },
   });
   const floor = (n: string) => project.floors.find((f) => f.floorName === n)!.id;
+
+  // the project gets its own copy of the register; demo tasks use the copies
+  const template = await prisma.designCategory.findMany({ where: { projectId: null } });
+  const catId: Record<string, string> = {};
+  for (const t of template) {
+    const copy = await prisma.designCategory.create({
+      data: {
+        name: t.name,
+        projectId: project.id,
+        specializationId: t.specializationId,
+        appliesTo: t.appliesTo,
+        discipline: t.discipline,
+      },
+    });
+    catId[t.name] = copy.id;
+  }
+  // demo team membership
+  for (const userId of [admin.id, rahul.id, priya.id, onsite.id]) {
+    await prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId: project.id, userId } },
+      update: {},
+      create: { projectId: project.id, userId },
+    });
+  }
 
   const dueIn = (days: number) =>
     new Date(Date.now() + days * 24 * 3600 * 1000);
@@ -157,7 +189,7 @@ async function main() {
     data: {
       projectId: project.id,
       floorId: floor("Ground Floor"),
-      categoryId: catId["Electrical Design"],
+      categoryId: catId["Ground Floor Slab Electrical Conduiting Plan"],
       designerId: rahul.id,
       deadline: dueIn(6),
       priority: "HIGH",
@@ -170,7 +202,7 @@ async function main() {
     data: {
       projectId: project.id,
       floorId: floor("First Floor"),
-      categoryId: catId["Electrical Design"],
+      categoryId: catId["Wall Electrical + Remote Location"],
       designerId: rahul.id,
       deadline: dueIn(3),
       priority: "MEDIUM",
@@ -196,7 +228,7 @@ async function main() {
     data: {
       projectId: project.id,
       floorId: floor("Second Floor"),
-      categoryId: catId["Electrical Design"],
+      categoryId: catId["DB Location"],
       designerId: rahul.id,
       deadline: dueIn(1),
       priority: "URGENT",
@@ -231,7 +263,7 @@ async function main() {
     data: {
       projectId: project.id,
       floorId: floor("Third Floor"),
-      categoryId: catId["Electrical Design"],
+      categoryId: catId["Automation"],
       designerId: priya.id,
       deadline: dueIn(10),
       priority: "LOW",
@@ -265,7 +297,7 @@ async function main() {
     data: {
       projectId: project.id,
       floorId: floor("Ground Floor"),
-      categoryId: catId["Plumbing Design"],
+      categoryId: catId["Bathroom Plumbing"],
       designerId: priya.id,
       deadline: dueIn(8),
       priority: "MEDIUM",

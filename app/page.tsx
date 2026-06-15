@@ -3,5 +3,6 @@ import { getSession } from "@/lib/auth";
 
 export default async function Home() {
   const user = await getSession();
-  redirect(user ? "/dashboard" : "/login");
+  // everyone lives project-first
+  redirect(user ? "/projects" : "/login");
 }

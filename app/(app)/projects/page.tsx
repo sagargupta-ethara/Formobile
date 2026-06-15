@@ -14,8 +14,8 @@ import {
 } from "@/components/ui";
 import { Stagger, Item } from "@/components/motion";
 import Building, { type BuildingFloor } from "@/components/Building";
-import DateTimePicker from "@/components/DateTimePicker";
-import { PROJECT_STATUS_LABEL, fmtDate } from "@/lib/format";
+import Select from "@/components/Select";
+import { PROJECT_STATUS_LABEL } from "@/lib/format";
 
 function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
@@ -23,13 +23,28 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-/** Build floor list bottom-up: basements, ground, then upper floors. */
-function buildFloors(basements: number, above: number): BuildingFloor[] {
-  const list: { name: string; isBasement?: boolean }[] = [];
+/** Build floor list bottom-up: basements, stilt, ground (+ upper ground),
+ *  floors, terrace. */
+function buildFloors(
+  basements: number,
+  above: number,
+  stilt: boolean,
+  upperGround: boolean,
+  terrace: boolean
+): BuildingFloor[] {
+  const list: { name: string; kind: "BASEMENT" | "STILT" | "FLOOR" | "TERRACE" }[] = [];
   for (let b = basements; b >= 1; b--)
-    list.push({ name: basements > 1 ? `Basement ${b}` : "Basement", isBasement: true });
-  for (let a = 0; a < above; a++)
-    list.push({ name: a === 0 ? "Ground Floor" : `${ordinal(a)} Floor` });
+    list.push({
+      name: basements > 1 ? `Basement ${b}` : "Basement",
+      kind: "BASEMENT",
+    });
+  if (stilt) list.push({ name: "Stilt Floor", kind: "STILT" });
+  for (let a = 0; a < above; a++) {
+    list.push({ name: a === 0 ? "Ground Floor" : `${ordinal(a)} Floor`, kind: "FLOOR" });
+    if (a === 0 && upperGround)
+      list.push({ name: "Upper Ground Floor", kind: "FLOOR" });
+  }
+  if (terrace) list.push({ name: "Terrace", kind: "TERRACE" });
   return list.map((f, i) => ({ ...f, order: i }));
 }
 
@@ -47,7 +62,9 @@ interface Project {
 const STATUS_TINT: Record<string, { bg: string; fg: string }> = {
   ACTIVE: { bg: "#dcfce7", fg: "#15803d" },
   PLANNING: { bg: "#dbeafe", fg: "#1d4ed8" },
+  DESIGN: { bg: "#ede9fe", fg: "#6d28d9" },
   ON_HOLD: { bg: "#fef3c7", fg: "#b45309" },
+  UPCOMING: { bg: "#e0f2fe", fg: "#0369a1" },
   COMPLETED: { bg: "#eef2f7", fg: "#475569" },
 };
 
@@ -71,8 +88,15 @@ export default function ProjectsPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Portfolio"
         title="Projects"
-        subtitle="Buildings, floors and design scope"
+        subtitle={
+          role === "DESIGNER"
+            ? "Buildings with design tasks assigned to you"
+            : role === "ONSITE"
+            ? "Buildings with designs routed to your team"
+            : "Buildings, floors and design scope"
+        }
         action={
           role === "ADMIN" && (
             <button className="btn btn-primary" onClick={() => setOpen(true)}>
@@ -175,12 +199,9 @@ export default function ProjectsPage() {
                       color: "#94a3b8",
                     }}
                   >
-                    <span>
-                      {[p.clientName, p.location].filter(Boolean).join(" · ") ||
-                        "—"}
-                    </span>
+                    <span>{p.location || "—"}</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      Due {fmtDate(p.expectedCompletion)} <ArrowUpRight size={13} />
+                      Open <ArrowUpRight size={13} />
                     </span>
                   </div>
                 </Link>
@@ -213,18 +234,18 @@ function NewProjectModal({
   const [form, setForm] = useState({
     name: "",
     code: "",
-    clientName: "",
     location: "",
-    startDate: "",
-    expectedCompletion: "",
     status: "PLANNING",
   });
   const [above, setAbove] = useState(3);
   const [basements, setBasements] = useState(0);
+  const [stilt, setStilt] = useState(false);
+  const [upperGround, setUpperGround] = useState(false);
+  const [terrace, setTerrace] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const floors = buildFloors(basements, above);
+  const floors = buildFloors(basements, above, stilt, upperGround, terrace);
 
   function set(k: string, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -238,7 +259,10 @@ function NewProjectModal({
       await api("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, floors: floors.map((f) => f.name) }),
+        body: JSON.stringify({
+          ...form,
+          floors: floors.map((f) => ({ name: f.name, type: f.kind })),
+        }),
       });
       onCreated();
     } catch (e) {
@@ -258,34 +282,18 @@ function NewProjectModal({
           <Field label="Project Code *">
             <input className="input mono" value={form.code} onChange={(e) => set("code", e.target.value)} placeholder="ABC-001" required />
           </Field>
-          <Field label="Client Name">
-            <input className="input" value={form.clientName} onChange={(e) => set("clientName", e.target.value)} />
-          </Field>
           <Field label="Location">
             <input className="input" value={form.location} onChange={(e) => set("location", e.target.value)} />
           </Field>
-          <Field label="Start Date">
-            <DateTimePicker
-              mode="date"
-              value={form.startDate}
-              onChange={(v) => set("startDate", v)}
-              placeholder="Pick start date"
-            />
-          </Field>
-          <Field label="Expected Completion">
-            <DateTimePicker
-              mode="date"
-              value={form.expectedCompletion}
-              onChange={(v) => set("expectedCompletion", v)}
-              placeholder="Pick completion date"
-            />
-          </Field>
           <Field label="Status">
-            <select className="select" value={form.status} onChange={(e) => set("status", e.target.value)}>
-              {Object.entries(PROJECT_STATUS_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
+            <Select
+              value={form.status}
+              onChange={(v) => set("status", v)}
+              options={Object.entries(PROJECT_STATUS_LABEL).map(([k, v]) => ({
+                value: k,
+                label: v,
+              }))}
+            />
           </Field>
         </div>
 
@@ -315,6 +323,24 @@ function NewProjectModal({
               min={0}
               max={5}
               onChange={setBasements}
+            />
+            <Toggle
+              label="Stilt floor"
+              hint="Parking / services level between basement and ground"
+              checked={stilt}
+              onChange={setStilt}
+            />
+            <Toggle
+              label="Upper ground floor"
+              hint="Between the ground and first floors"
+              checked={upperGround}
+              onChange={setUpperGround}
+            />
+            <Toggle
+              label="Terrace"
+              hint="Rooftop level with its own drawing set"
+              checked={terrace}
+              onChange={setTerrace}
             />
             <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
               <span className="mono" style={{ fontWeight: 700, color: "#0f172a" }}>
@@ -400,6 +426,74 @@ function Stepper({
         {hint && <span style={{ fontSize: "0.74rem", color: "#94a3b8" }}>{hint}</span>}
       </div>
     </div>
+  );
+}
+
+function Toggle({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        background: "none",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+    >
+      <span
+        aria-checked={checked}
+        role="switch"
+        style={{
+          width: 38,
+          height: 22,
+          borderRadius: 999,
+          flexShrink: 0,
+          background: checked
+            ? "linear-gradient(90deg,#3b82f6,#1d4ed8)"
+            : "#dbe3ee",
+          position: "relative",
+          transition: "background 0.2s ease",
+          boxShadow: checked ? "0 4px 10px -3px rgba(37,99,235,0.5)" : "none",
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: 3,
+            left: checked ? 19 : 3,
+            width: 16,
+            height: 16,
+            borderRadius: 999,
+            background: "#fff",
+            boxShadow: "0 1px 3px rgba(15,23,42,0.3)",
+            transition: "left 0.2s ease",
+          }}
+        />
+      </span>
+      <span>
+        <span style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#1e293b" }}>
+          {label}
+        </span>
+        {hint && (
+          <span style={{ display: "block", fontSize: "0.72rem", color: "#94a3b8" }}>{hint}</span>
+        )}
+      </span>
+    </button>
   );
 }
 

@@ -25,11 +25,14 @@ export async function GET(
 
 const patchSchema = z.object({
   name: z.string().min(1).optional(),
+  code: z.string().min(1).optional(),
   clientName: z.string().optional().nullable(),
   location: z.string().optional().nullable(),
   startDate: z.string().optional().nullable(),
   expectedCompletion: z.string().optional().nullable(),
-  status: z.enum(["PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED"]).optional(),
+  status: z
+    .enum(["PLANNING", "DESIGN", "ACTIVE", "ON_HOLD", "UPCOMING", "COMPLETED"])
+    .optional(),
 });
 
 export async function PATCH(
@@ -40,10 +43,16 @@ export async function PATCH(
     const admin = await requireRole("ADMIN");
     const { id } = await params;
     const data = patchSchema.parse(await req.json());
+    if (data.code) {
+      const clash = await prisma.project.findUnique({ where: { code: data.code.trim() } });
+      if (clash && clash.id !== id)
+        return json({ error: "Another project already uses this code" }, 409);
+    }
     const project = await prisma.project.update({
       where: { id },
       data: {
         name: data.name,
+        code: data.code?.trim(),
         clientName: data.clientName,
         location: data.location,
         startDate: data.startDate ? new Date(data.startDate) : undefined,

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,6 +14,13 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  axes: ["opsz"],
+});
+
 export const metadata: Metadata = {
   title: "Blueprint Flow",
   description: "Design Collaboration & Site Execution Management Platform",
@@ -25,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${mono.variable} ${fraunces.variable}`}>
       <body>{children}</body>
     </html>
   );

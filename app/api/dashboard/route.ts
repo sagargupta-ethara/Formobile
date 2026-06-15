@@ -2,9 +2,10 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { fail, json, requireUser } from "@/lib/api";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await requireUser();
+    const projectId = new URL(req.url).searchParams.get("projectId") || undefined;
     const now = new Date();
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
@@ -16,66 +17,96 @@ export async function GET() {
     };
 
     if (user.role === "ADMIN") {
+      // Admin analytics are project-scoped: pass ?projectId=… (the Analytics
+      // tab). Without it, numbers span all projects.
+      const scope = projectId ? { projectId } : {};
       const [
-        projects,
+        total,
+        assigned,
         pending,
         approved,
         rejected,
         overdue,
         todayDeadlines,
-        designers,
-        approvedTotal,
         reviewedTotal,
       ] = await Promise.all([
-        prisma.project.count(),
-        prisma.designTask.count({ where: { status: PENDING } }),
-        prisma.designTask.count({ where: { status: "APPROVED" } }),
-        prisma.designTask.count({ where: { status: "REJECTED" } }),
+        prisma.designTask.count({ where: scope }),
+        prisma.designTask.count({ where: { ...scope, status: "ASSIGNED" } }),
+        prisma.designTask.count({ where: { ...scope, status: PENDING } }),
+        prisma.designTask.count({ where: { ...scope, status: "APPROVED" } }),
+        prisma.designTask.count({ where: { ...scope, status: "REJECTED" } }),
         prisma.designTask.count({
-          where: { deadline: { lt: now }, status: { not: "APPROVED" } },
+          where: { ...scope, deadline: { lt: now }, status: { not: "APPROVED" } },
         }),
         prisma.designTask.count({
-          where: { deadline: { gte: startOfDay, lte: endOfDay } },
+          where: { ...scope, deadline: { gte: startOfDay, lte: endOfDay } },
         }),
-        prisma.user.findMany({
-          where: { role: "DESIGNER" },
-          select: {
-            id: true,
-            name: true,
-            _count: { select: { designTasks: true } },
-          },
-        }),
-        prisma.designTask.count({ where: { status: "APPROVED" } }),
-        prisma.review.count(),
+        prisma.review.count({ where: projectId ? { task: { projectId } } : {} }),
       ]);
 
-      // per-designer approval performance
-      const designerPerf = await Promise.all(
-        designers.map(async (d) => {
-          const [approvedCount, total] = await Promise.all([
-            prisma.designTask.count({
-              where: { designerId: d.id, status: "APPROVED" },
-            }),
-            d._count.designTasks,
-          ]);
-          return { name: d.name, approved: approvedCount, total };
-        })
-      );
+      // per-assignee performance within scope
+      const grouped = await prisma.designTask.groupBy({
+        by: ["designerId"],
+        where: { ...scope, designerId: { not: null } },
+        _count: { _all: true },
+      });
+      const approvedBy = await prisma.designTask.groupBy({
+        by: ["designerId"],
+        where: { ...scope, designerId: { not: null }, status: "APPROVED" },
+        _count: { _all: true },
+      });
+      const userRows = await prisma.user.findMany({
+        where: { id: { in: grouped.map((g) => g.designerId!).filter(Boolean) } },
+        select: { id: true, name: true },
+      });
+      const nameOf = new Map(userRows.map((u) => [u.id, u.name]));
+      const approvedOf = new Map(approvedBy.map((a) => [a.designerId, a._count._all]));
+      const designerPerf = grouped
+        .map((g) => ({
+          name: nameOf.get(g.designerId!) ?? "—",
+          approved: approvedOf.get(g.designerId) ?? 0,
+          total: g._count._all,
+        }))
+        .sort((a, b) => b.total - a.total);
 
       const approvalRate =
-        reviewedTotal > 0
-          ? Math.round((approvedTotal / reviewedTotal) * 100)
-          : 0;
+        reviewedTotal > 0 ? Math.round((approved / reviewedTotal) * 100) : 0;
+
+      // per-floor progress when scoped to a project
+      let floorProgress: { id: string; name: string; approved: number; total: number }[] = [];
+      if (projectId) {
+        const floors = await prisma.floor.findMany({
+          where: { projectId },
+          orderBy: { order: "desc" },
+          select: {
+            id: true,
+            floorName: true,
+            _count: { select: { tasks: true } },
+            tasks: { where: { status: "APPROVED" }, select: { id: true } },
+          },
+        });
+        floorProgress = floors.map((f) => ({
+          id: f.id,
+          name: f.floorName,
+          approved: f.tasks.length,
+          total: f._count.tasks,
+        }));
+      }
 
       return json({
         role: "ADMIN",
-        cards: { projects, pending, approved, rejected, overdue, todayDeadlines },
-        charts: { approvalRate, designerPerf },
+        cards: { total, assigned, pending, approved, rejected, overdue, todayDeadlines },
+        charts: { approvalRate, designerPerf, floorProgress },
       });
     }
 
     if (user.role === "DESIGNER") {
-      const base = { designerId: user.id };
+      const base = {
+        OR: [
+          { designerId: user.id },
+          { assignees: { some: { userId: user.id } } },
+        ],
+      };
       const [assigned, submitted, approved, rejected, overdue] =
         await Promise.all([
           prisma.designTask.count({ where: { ...base, status: "ASSIGNED" } }),
@@ -92,16 +123,25 @@ export async function GET() {
       });
     }
 
-    // ONSITE
+    // ONSITE — their dedicated review queue, plus (when no reviewer is set)
+    // anything routed to their trade; generalists catch everything unrouted
     const routed: Prisma.DesignTaskWhereInput = {
-      category: {
-        OR: [
-          { specializationId: null },
+      OR: [
+        { reviewerId: user.id },
+        {
+          reviewerId: null,
           ...(user.specializationId
-            ? [{ specializationId: user.specializationId }]
-            : []),
-        ],
-      },
+            ? {
+                category: {
+                  OR: [
+                    { specializationId: null },
+                    { specializationId: user.specializationId },
+                  ],
+                },
+              }
+            : {}),
+        },
+      ],
     };
     const [pendingReviews, approvals, rejections, expired] = await Promise.all([
       prisma.designTask.count({ where: { ...routed, status: PENDING } }),

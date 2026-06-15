@@ -9,11 +9,18 @@ const ROOT = path.resolve(process.env.STORAGE_DIR ?? "./storage");
 export const ALLOWED_EXT = new Set([
   // design files
   "pdf", "dwg", "dxf", "png", "jpg", "jpeg", "zip",
-  // voice notes (Phase 2 reject memos)
+  // voice notes (reject memos)
   "mp3", "aac", "wav",
 ]);
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
+
+/** Voice memo formats: PRD list + what browsers' MediaRecorder produces. */
+export const AUDIO_EXT = new Set(["mp3", "aac", "wav", "webm", "m4a", "mp4", "ogg"]);
+// 5 minutes of compressed audio fits comfortably under this.
+export const MAX_VOICE_BYTES = 15 * 1024 * 1024;
+export const MAX_REVIEW_PHOTOS = 5;
+export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 export function extOf(name: string): string {
   return name.split(".").pop()?.toLowerCase() ?? "";
@@ -77,6 +84,10 @@ export function contentType(ext: string): string {
     mp3: "audio/mpeg",
     aac: "audio/aac",
     wav: "audio/wav",
+    webm: "audio/webm",
+    m4a: "audio/mp4",
+    mp4: "audio/mp4",
+    ogg: "audio/ogg",
   };
   return map[ext] ?? "application/octet-stream";
 }

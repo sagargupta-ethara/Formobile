@@ -20,8 +20,10 @@ enum UserStatus {
 
 enum ProjectStatus {
   PLANNING
+  DESIGN
   ACTIVE
   ON_HOLD
+  UPCOMING
   COMPLETED
 }
 
@@ -46,6 +48,24 @@ enum ReviewDecision {
   REJECTED
 }
 
+// Vertical zones of a building. STILT sits above basements and below the
+// ground floor; TERRACE caps the building. Drives which drawing types
+// (DesignCategory.appliesTo) can be assigned on a floor.
+enum FloorType {
+  BASEMENT
+  STILT
+  FLOOR
+  TERRACE
+}
+
+// Which design department produces a drawing — the head-tabs on each floor.
+enum Discipline {
+  INTERIOR
+  STRUCTURE
+  MEP
+  WOODWORK
+}
+
 model Specialization {
   id         String           @id @default(cuid())
   name       String           @unique
@@ -63,15 +83,20 @@ model User {
   role             Role
   specializationId String?
   specialization   Specialization? @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  department       String?         // e.g. "Interior Design", "Site Supervisor", "MEP · Electrical"
   status           UserStatus      @default(ACTIVE)
   avatarKey        String?         // path on disk under STORAGE_DIR for profile photo
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @default(now()) @updatedAt
 
   designTasks  DesignTask[]   @relation("designer")
+  reviewTasks  DesignTask[]   @relation("assignedReviewer")
   reviews      Review[]
   uploadedFiles DesignFile[]  @relation("uploader")
   auditLogs    AuditLog[]
+  notifications Notification[]
+  projectMemberships ProjectMember[]
+  taskAssignments    TaskAssignee[]
 }
 
 model Project {
@@ -85,8 +110,22 @@ model Project {
   status             ProjectStatus @default(PLANNING)
   createdAt          DateTime      @default(now())
 
-  floors Floor[]
-  tasks  DesignTask[]
+  floors     Floor[]
+  tasks      DesignTask[]
+  members    ProjectMember[]
+  categories DesignCategory[]
+}
+
+// Explicit project staffing — who is on this project's team.
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
 }
 
 model Floor {
@@ -94,18 +133,29 @@ model Floor {
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   floorName String
+  floorType FloorType @default(FLOOR)
   order     Int      @default(0)
   createdAt DateTime @default(now())
 
   tasks DesignTask[]
 }
 
+// A drawing type. Rows with projectId = null form the master template;
+// each project gets its own editable copy of the register.
 model DesignCategory {
   id               String          @id @default(cuid())
-  name             String          @unique
+  name             String
+  projectId        String?
+  project          Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   specializationId String?
   specialization   Specialization? @relation(fields: [specializationId], references: [id], onDelete: SetNull)
+  // Floor types this drawing applies to; empty = applies everywhere.
+  appliesTo        FloorType[]     @default([])
+  discipline       Discipline      @default(INTERIOR)
   createdAt        DateTime        @default(now())
+
+  @@unique([projectId, name])
+  @@index([projectId])
 
   tasks DesignTask[]
 }
@@ -120,6 +170,9 @@ model DesignTask {
   category    DesignCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   designerId  String?
   designer    User?      @relation("designer", fields: [designerId], references: [id], onDelete: SetNull)
+  // the off-site person responsible for reviewing this drawing within the SLA
+  reviewerId  String?
+  reviewer    User?      @relation("assignedReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
   deadline    DateTime?
   priority    Priority   @default(MEDIUM)
   status      TaskStatus @default(ASSIGNED)
@@ -127,14 +180,30 @@ model DesignTask {
   // may only see this version; older versions are hidden from them.
   currentVersion Int     @default(0)
   reviewDueAt DateTime?  // set when task enters review; drives the 24h SLA countdown
+  escalatedAt DateTime?  // set once the SLA breach has been escalated to admins
+  deadlineNotifiedAt DateTime? // set once the deadline-approaching alert has gone out
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   files   DesignFile[]
   reviews Review[]
+  assignees TaskAssignee[]
 
   @@index([projectId])
   @@index([designerId])
+}
+
+// Additional people working a task — a drawing can involve multiple
+// departments (architect + site supervisor + MEP …). designerId stays the
+// primary assignee; every assignee (incl. primary) has a row here.
+model TaskAssignee {
+  id     String     @id @default(cuid())
+  taskId String
+  task   DesignTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
 }
 
 model DesignFile {
@@ -162,7 +231,38 @@ model Review {
   version      Int            // which file version this review applies to
   decision     ReviewDecision
   comments     String?
+  voiceNoteKey  String?       // recorded rejection memo, stored under STORAGE_DIR
+  voiceNoteType String?       // audio file extension (webm/mp3/aac/wav/…)
   createdAt    DateTime       @default(now())
+
+  photos ReviewPhoto[]
+}
+
+// Site photos attached to a review (typically a rejection).
+model ReviewPhoto {
+  id         String   @id @default(cuid())
+  reviewId   String
+  review     Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  storageKey String
+  fileName   String
+  fileType   String
+  fileSize   Int      @default(0)
+  createdAt  DateTime @default(now())
+}
+
+// In-app notification feed (Module 11).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // ASSIGNED | UPLOADED | APPROVED | REJECTED | REVISION | REVIEW_OVERDUE
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
 }
 
 model AuditLog {

@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  LayoutDashboard,
   FolderKanban,
   ListChecks,
   Users,
@@ -17,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Avatar } from "@/components/ui";
+import NotificationBell from "@/components/NotificationBell";
 
 type Role = "ADMIN" | "DESIGNER" | "ONSITE";
 
@@ -33,21 +33,19 @@ function navFor(role: Role): NavItem[] {
   const profile = { href: "/profile", label: "Profile", icon: <UserCircle {...I} /> };
   if (role === "ADMIN")
     return [
-      { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard {...I} /> },
       { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
       { href: "/tasks", label: "Design Tasks", icon: <ListChecks {...I} /> },
       { href: "/users", label: "Team", icon: <Users {...I} /> },
-      { href: "/settings", label: "Settings", icon: <Settings {...I} /> },
       profile,
     ];
   if (role === "DESIGNER")
     return [
-      { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard {...I} /> },
+      { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
       { href: "/tasks", label: "My Tasks", icon: <ListChecks {...I} /> },
       profile,
     ];
   return [
-    { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard {...I} /> },
+    { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
     { href: "/tasks", label: "Reviews", icon: <ListChecks {...I} /> },
     profile,
   ];
@@ -69,6 +67,15 @@ export default function Shell({
   const nav = navFor(user.role);
   const current =
     nav.find((n) => pathname === n.href || pathname.startsWith(n.href + "/"))?.label ?? "";
+
+  // Lock background scroll while the mobile drawer is open. (overflow only —
+  // touch-action on body would also block scrolling inside the drawer itself)
+  useEffect(() => {
+    document.body.style.overflow = drawer ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [drawer]);
 
   useEffect(() => {
     setDrawer(false); // close drawer on navigation
@@ -105,7 +112,9 @@ export default function Shell({
       <aside
         className={`app-sidebar${drawer ? " open" : ""}`}
         style={{
-          background: "linear-gradient(180deg, #111827 0%, #0b1220 60%, #0a0f1c 100%)",
+          background:
+            "linear-gradient(rgba(96,165,250,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(96,165,250,0.045) 1px, transparent 1px), linear-gradient(180deg, #111827 0%, #0b1220 60%, #0a0f1c 100%)",
+          backgroundSize: "28px 28px, 28px 28px, 100% 100%",
           color: "#e2e8f0",
           padding: "1.1rem 0.85rem",
           display: "flex",
@@ -122,7 +131,7 @@ export default function Shell({
           }}
         >
           <Link
-            href="/dashboard"
+            href="/projects"
             style={{ display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "inherit" }}
           >
             <motion.div
@@ -142,7 +151,7 @@ export default function Shell({
               <Compass width={19} height={19} color="#fff" />
             </motion.div>
             <div style={{ lineHeight: 1.15 }}>
-              <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.98rem" }}>
+              <div className="display" style={{ color: "#fff", fontSize: "1.05rem" }}>
                 Blueprint Flow
               </div>
               <div style={{ fontSize: "0.66rem", color: "#7c8aa3", letterSpacing: "0.04em" }}>
@@ -165,6 +174,7 @@ export default function Shell({
           </button>
         </div>
 
+        <div className="nav-section">Workspace</div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {nav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -172,18 +182,7 @@ export default function Shell({
               <Link
                 key={item.href}
                 href={item.href}
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 11,
-                  padding: "0.62rem 0.72rem",
-                  borderRadius: 10,
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  color: active ? "#fff" : "#9fb0c9",
-                  textDecoration: "none",
-                }}
+                className={`nav-link${active ? " active" : ""}`}
               >
                 {active && (
                   <motion.span
@@ -195,7 +194,23 @@ export default function Shell({
                       borderRadius: 10,
                       background: "linear-gradient(90deg, rgba(59,130,246,0.22), rgba(59,130,246,0.08))",
                       border: "1px solid rgba(59,130,246,0.35)",
+                      boxShadow: "0 6px 18px -8px rgba(59,130,246,0.5)",
                       zIndex: 0,
+                    }}
+                  />
+                )}
+                {active && (
+                  <motion.span
+                    layoutId="nav-tick"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    style={{
+                      position: "absolute",
+                      left: -9,
+                      top: "26%",
+                      bottom: "26%",
+                      width: 3,
+                      borderRadius: 999,
+                      background: "linear-gradient(180deg,#60a5fa,#2563eb)",
                     }}
                   />
                 )}
@@ -309,20 +324,26 @@ export default function Shell({
                 </span>
               </div>
             </div>
-            <div
-              className="mono hide-xs"
-              style={{
-                fontSize: "0.72rem",
-                color: "#64748b",
-                padding: "0.3rem 0.65rem",
-                borderRadius: 999,
-                background: "#fff",
-                border: "1px solid var(--color-line)",
-                boxShadow: "var(--shadow-sm)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {today}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <NotificationBell />
+              <div
+                className="mono hide-xs"
+                style={{
+                  fontSize: "0.72rem",
+                  color: "#64748b",
+                  padding: "0.3rem 0.65rem",
+                  borderRadius: 999,
+                  background: "#fff",
+                  border: "1px solid var(--color-line)",
+                  boxShadow: "var(--shadow-sm)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {today}
+              </div>
+              <Link href="/profile" style={{ display: "inline-flex", borderRadius: 999 }}>
+                <Avatar name={displayName} src={avatarUrl} size={30} />
+              </Link>
             </div>
           </div>
         </div>

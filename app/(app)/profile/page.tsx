@@ -73,7 +73,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <PageHeader title="Profile" subtitle="Your account and personal details" />
+      <PageHeader eyebrow="Account" title="Profile" subtitle="Your account and personal details" />
 
       {toast && (
         <motion.div

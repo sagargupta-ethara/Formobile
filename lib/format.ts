@@ -38,8 +38,10 @@ export function priorityStyle(p: string): { bg: string; fg: string } {
 
 export const PROJECT_STATUS_LABEL: Record<string, string> = {
   PLANNING: "Planning",
+  DESIGN: "Design",
   ACTIVE: "Active",
   ON_HOLD: "On Hold",
+  UPCOMING: "Upcoming",
   COMPLETED: "Completed",
 };
 

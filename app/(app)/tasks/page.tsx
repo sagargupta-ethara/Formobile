@@ -10,7 +10,7 @@ import {
   Skeleton,
   Empty,
   StatusBadge,
-  PriorityBadge,
+  TaskPeople,
 } from "@/components/ui";
 import { Stagger, Item } from "@/components/motion";
 import AssignTaskModal from "@/components/AssignTaskModal";
@@ -19,7 +19,6 @@ import { fmtDateTime, countdown } from "@/lib/format";
 interface Task {
   id: string;
   status: string;
-  priority: string;
   deadline: string | null;
   reviewDueAt?: string | null;
   floorId: string;
@@ -27,6 +26,8 @@ interface Task {
   floor: { floorName: string };
   category: { name: string };
   designer: { name: string } | null;
+  reviewer?: { name: string } | null;
+  assignees?: { user: { id: string; name: string } }[];
 }
 
 const FILTERS = [
@@ -68,6 +69,7 @@ export default function TasksPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Workflow"
         title={title}
         subtitle={
           role === "ONSITE"
@@ -140,6 +142,13 @@ export default function TasksPage() {
         <Empty>No tasks in this view.</Empty>
       ) : (
         <Stagger className="card" style={{ overflow: "hidden", padding: 0 }}>
+          <div className="task-row list-head" style={{ padding: "0.6rem 1.2rem" }}>
+            <span>Design Task</span>
+            <span>Team</span>
+            <span>Schedule</span>
+            <span style={{ textAlign: "right" }}>Status</span>
+            <span />
+          </div>
           {filtered.map((t, i) => {
             const isPending =
               t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED";
@@ -148,16 +157,13 @@ export default function TasksPage() {
               <Item key={t.id}>
                 <Link
                   href={`/projects/${t.project.id}?floor=${t.floorId}`}
-                  className="task-row"
+                  className="task-row row-link"
                   style={{
                     padding: "0.95rem 1.2rem",
                     borderTop: i === 0 ? "none" : "1px solid #f1f5f9",
                     textDecoration: "none",
                     color: "inherit",
-                    transition: "background 0.18s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 650, fontSize: "0.92rem" }}>
@@ -167,8 +173,17 @@ export default function TasksPage() {
                       {t.project.name} · {t.floor.floorName}
                     </div>
                   </div>
-                  <div style={{ fontSize: "0.82rem", color: "#475569" }}>
-                    {t.designer?.name ?? "Unassigned"}
+                  <div style={{ minWidth: 0 }}>
+                    <TaskPeople
+                      assignees={
+                        t.assignees?.length
+                          ? t.assignees.map((a) => a.user.name)
+                          : t.designer
+                          ? [t.designer.name]
+                          : []
+                      }
+                      reviewer={t.reviewer?.name ?? null}
+                    />
                   </div>
                   <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
                     {cd ? (
@@ -191,7 +206,6 @@ export default function TasksPage() {
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                    <PriorityBadge priority={t.priority} />
                     <StatusBadge status={t.status} />
                   </div>
                   <ChevronRight size={16} color="#cbd5e1" />
