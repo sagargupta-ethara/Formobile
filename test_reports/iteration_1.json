@@ -1,0 +1,32 @@
+{"summary":"Backend audit of Blueprint Flow (37/44 pytest passed, 84%). Auth/projects/floors/categories/tasks/upload/approve flows all work for admin+designer+onsite. CRITICAL RBAC defects found.",
+"backend_issues":{"critical":[
+ {"endpoint":"GET /api/users","issue":"DESIGNER role can list ALL users (returns 200). Should be ADMIN-only per spec/UI.","priority":"HIGH"},
+ {"endpoint":"GET /api/files/{rejectedFileId}","issue":"On-site reviewer CAN still download a REJECTED previous-version file (200). lib/access.ts hiding rule is NOT enforced server-side. RBAC bypass.","priority":"CRITICAL"},
+ {"endpoint":"GET /api/tasks (ONSITE)","issue":"Onsite reviewer sees ASSIGNED tasks (not yet PENDING_REVIEW). Spec says they should only see PENDING_REVIEW / REVISION_SUBMITTED for their specialization.","priority":"HIGH"},
+ {"endpoint":"PATCH/DELETE /api/specializations/{id}","issue":"No route exists - returns 404 HTML. Admin/Settings 'rename/delete specialization' feature is NOT implemented in backend.","priority":"HIGH"},
+ {"endpoint":"GET /api/auth/me (ONSITE)","issue":"Response omits specializationId for onsite user (null) even though user has one assigned in DB. Breaks client-side specialization filtering.","priority":"HIGH"}],
+"minor":[
+ {"endpoint":"POST /api/profile (wrong current pw)","issue":"Returns 405 instead of 4xx. Password-change endpoint shape unclear - no dedicated /api/profile/password route discovered."},
+ {"endpoint":"POST /api/tasks/{id}/reviews","issue":"Reject requires field 'reason' (not 'comment'). Document the field name; ensure FE sends reason."}]},
+"frontend_issues":{"ui_bugs":[],"integration_issues":[],"design_issues":[]},
+"test_report_links":["/app/backend/tests/test_blueprint_flow.py","/app/test_reports/pytest/pytest_results.xml"],
+"action_items":[
+ "FIX RBAC: GET /api/users must require ADMIN role (currently any auth user passes).",
+ "FIX RBAC bypass: GET /api/files/{id} must apply lib/access.ts visibility for ONSITE - currently REJECTED prior versions are downloadable.",
+ "FIX onsite task list: filter to PENDING_REVIEW/REVISION_SUBMITTED + matching specialization; ASSIGNED tasks must be hidden.",
+ "Implement PATCH+DELETE handlers in /app/app/api/specializations/[id]/route.ts (route file missing entirely).",
+ "Include specializationId in /api/auth/me response for ONSITE users.",
+ "Provide /api/profile/password (POST) with 400/401 on wrong current password; current /api/profile rejects POST with 405."],
+"critical_code_review_comments":[
+ "Missing /app/app/api/specializations/[id]/route.ts - no edit/delete handlers although UI promises Settings CRUD.",
+ "lib/access.ts visibility rules apparently only consulted by task-file list, not by direct /api/files/[id] GET handler - centralize the check.",
+ "Reject API uses field 'reason'; UI label is 'comment' - align naming to avoid bugs.",
+ "/api/auth/me serializer drops specializationId for ONSITE; check select clause."],
+"updated_files":["/app/backend/tests/test_blueprint_flow.py"],
+"success_rate":{"backend":"84%","frontend":"not tested"},
+"test_credentials":"admin manish.uppal@blueprintflow.in / designer amarpreet.padam@blueprintflow.in / onsite sudama@blueprintflow.in - all password123",
+"seed_data_creation":"Created TEST project + 4 floors + 2 design categories + 1 task + 2 file versions via API as part of pytest run. Not cleaned up.",
+"retest_needed":true,
+"should_main_agent_self_test":false,
+"context_for_next_testing_agent":"Frontend Playwright UI testing was NOT performed due to time/token budget. Backend pytest covers full admin->designer->onsite happy path including file upload+review. Re-run after RBAC fixes; specifically verify (1) designer GET /api/users => 403, (2) onsite GET /api/files/<rejected-file-id> => 403/404, (3) onsite GET /api/tasks excludes ASSIGNED, (4) PATCH/DELETE /api/specializations/[id] works, (5) /api/auth/me returns specializationId for onsite. Use existing test file /app/backend/tests/test_blueprint_flow.py.",
+"rca of the issue":"RBAC checks are inconsistently applied: /api/users route only calls requireUser() not requireRole('ADMIN'); /api/files/[id] does not invoke lib/access.ts visibility filter; task list filter for ONSITE does not constrain by status. Specialization [id] route file does not exist. /api/auth/me select likely omits specializationId column."}
