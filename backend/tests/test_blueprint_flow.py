@@ -10,7 +10,7 @@ import pytest
 import requests
 
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL")
-            or "https://040933de-3d41-4bf0-91c9-acbca78ac0e8.preview.emergentagent.com").rstrip("/")
+            or "https://floor-planning-stage.preview.emergentagent.com").rstrip("/")
 
 ADMIN = ("manish.uppal@blueprintflow.in", "password123")
 DESIGNER = ("amarpreet.padam@blueprintflow.in", "password123")  # Interior
