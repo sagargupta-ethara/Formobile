@@ -23,7 +23,13 @@ export async function GET(req: Request) {
     const role = sp.get("role") || undefined;
     const assignable = sp.get("assignable") === "1";
 
+    // Non-admins may only use this endpoint as a *picker directory*
+    // (assignable=1 or an explicit role filter). The full team listing —
+    // with email, phone, status — is admin-only.
     if (user.role !== "ADMIN") {
+      if (!assignable && role !== "DESIGNER" && role !== "ONSITE") {
+        throw new ApiError(403, "Forbidden");
+      }
       const users = await prisma.user.findMany({
         where: {
           status: "ACTIVE",

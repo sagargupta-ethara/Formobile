@@ -35,13 +35,16 @@ export async function GET(req: Request) {
       ];
     } else if (user.role === "ONSITE") {
       // their own review queue + their own uploads + (when no dedicated
-      // reviewer is set) anything routed to their trade / to generalists
+      // reviewer is set) anything routed to their trade / to generalists.
+      // Spec-routed tasks must be in a reviewable state — ASSIGNED tasks
+      // (designer hasn't uploaded yet) must not appear in onsite queues.
       where.OR = [
-        { reviewerId: user.id },
+        { reviewerId: user.id, status: { in: ["PENDING_REVIEW", "REVISION_SUBMITTED", "APPROVED", "REJECTED"] } },
         { designerId: user.id },
         { assignees: { some: { userId: user.id } } },
         {
           reviewerId: null,
+          status: { in: ["PENDING_REVIEW", "REVISION_SUBMITTED"] },
           ...(user.specializationId
             ? {
                 category: {

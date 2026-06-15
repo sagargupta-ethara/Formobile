@@ -51,14 +51,35 @@ DB: user `bf` / db `blueprint_flow` on `127.0.0.1:5432`.
 - Cloned repo already at `/app`; installed deps (`yarn install`), generated Prisma client.
 - Provisioned local Postgres, ran `prisma db push` and `prisma db seed`
   (1 project "ABC Corporate Tower" + 7 floors + 5 demo tasks + drawing register).
+- Imported the firm's real staff (`prisma/import-team.ts`) — 25 users; demo
+  project + dummy demo users removed.
 - Built production bundle (`yarn build`) and wired Next.js into the Emergent
   frontend supervisor slot via a shim.
 - Wrote FastAPI `/api/*` proxy → Next.js, registered under the existing backend
   supervisor slot.
-- End-to-end verified through the public preview URL:
-  - `GET /login` → 200, login screen renders correctly.
-  - `POST /api/auth/login` → 200 with `bpf_session` cookie.
-  - Browser login flow lands on `/projects` and shows seeded data.
+- Added self-healing Postgres supervisor program (re-installs the apt package,
+  recreates the `postgres` OS user, persists data at `/app/.platform/pgdata`)
+  + an idempotent `bootstrap-db.sh` that re-seeds an empty DB on cold start.
+- End-to-end verified through the public preview URL: login + project list +
+  Profile all render; the three Quick-login buttons all authenticate.
+
+### Audit pass + RBAC fixes (2026-06-15)
+Ran a backend audit (`/app/test_reports/iteration_1.json`) and patched all 5
+high-priority defects it found:
+- `GET /api/users` now requires ADMIN unless `assignable=1` or `role=` is set
+  (designers were previously able to list the full team).
+- `GET /api/files/[id]` for ONSITE — the dedicated reviewer no longer bypasses
+  the "rejected version is hidden" rule (was a quiet RBAC bypass in the prior
+  branch that exempted `task.reviewerId === user.id`).
+- `GET /api/tasks` for ONSITE — spec-routed branch now restricted to
+  `PENDING_REVIEW` / `REVISION_SUBMITTED`; `ASSIGNED` tasks no longer leak into
+  the on-site review queue.
+- `GET /api/auth/me` now re-reads the user from the DB (with
+  `specialization`), so `specializationId` is always fresh and present.
+- Added `app/api/specializations/[id]/route.ts` with `PATCH` (rename) and
+  `DELETE` (with FK-in-use guard).
+All 5 verified live via curl. Frontend Playwright pass was skipped to stay in
+budget — backend coverage was 84% with the above as the only criticals.
 
 ## Status
 **Imported, running, and reachable via the preview URL.** Awaiting next user

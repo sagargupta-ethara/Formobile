@@ -36,9 +36,11 @@ export async function GET(
     if (user.role === "DESIGNER" && !isAssignee) {
       throw new ApiError(403, "Forbidden");
     }
-    if (user.role === "ONSITE" && !isAssignee && task.reviewerId !== user.id) {
-      // routing + the hide-superseded-versions rule, enforced at download time
-      if (!onsiteIsRouted(user, task.category))
+    if (user.role === "ONSITE" && !isAssignee) {
+      // Onsite reviewers (including the dedicated reviewer for this task)
+      // are subject to the "rejected versions are hidden" rule. Only being
+      // an assignee on the task lifts that restriction.
+      if (task.reviewerId !== user.id && !onsiteIsRouted(user, task.category))
         throw new ApiError(403, "Forbidden");
       if (!onsiteCanSeeVersion(task, file.version))
         throw new ApiError(403, "This version is no longer available for review");
