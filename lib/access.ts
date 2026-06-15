@@ -49,15 +49,25 @@ export function visibleFiles<
 >(
   viewer: { role: Role; id: string },
   task: { status: TaskStatus; currentVersion: number; designerId: string | null },
-  files: T[]
+  files: T[],
+  rejectedVersions: Set<number> = new Set()
 ): T[] {
-  // admins, designers and the task's assignee (any role) see full history
-  if (
-    viewer.role === "ADMIN" ||
-    viewer.role === "DESIGNER" ||
-    task.designerId === viewer.id
-  )
-    return files;
+  // admins keep the full version history (including rejected plans)
+  if (viewer.role === "ADMIN") return files;
+  // designers (and their co-assignees) see the history EXCEPT the rejected
+  // plans themselves — only the reviewer's comments / voice / photos remain
+  // visible on the task page, never a link to the rejected drawing.
+  if (viewer.role === "DESIGNER" || task.designerId === viewer.id)
+    return files.filter((f) => !rejectedVersions.has(f.version));
   // other ONSITE reviewers: only the current version, only while reviewable
   return files.filter((f) => onsiteCanSeeVersion(task, f.version));
+}
+
+/** Set of file versions that were rejected (hidden from designers). */
+export function rejectedVersionSet(
+  reviews: { version: number; decision: "APPROVED" | "REJECTED" }[]
+): Set<number> {
+  return new Set(
+    reviews.filter((r) => r.decision === "REJECTED").map((r) => r.version)
+  );
 }

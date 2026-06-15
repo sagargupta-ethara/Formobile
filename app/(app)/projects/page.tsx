@@ -23,13 +23,11 @@ function ordinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-/** Build floor list bottom-up: basements, stilt, ground (+ upper ground),
+/** Build floor list bottom-up: basements, stilt (always present), ground,
  *  floors, terrace. */
 function buildFloors(
   basements: number,
   above: number,
-  stilt: boolean,
-  upperGround: boolean,
   terrace: boolean
 ): BuildingFloor[] {
   const list: { name: string; kind: "BASEMENT" | "STILT" | "FLOOR" | "TERRACE" }[] = [];
@@ -38,11 +36,10 @@ function buildFloors(
       name: basements > 1 ? `Basement ${b}` : "Basement",
       kind: "BASEMENT",
     });
-  if (stilt) list.push({ name: "Stilt Floor", kind: "STILT" });
+  // Stilt is a permanent part of every building.
+  list.push({ name: "Stilt Floor", kind: "STILT" });
   for (let a = 0; a < above; a++) {
     list.push({ name: a === 0 ? "Ground Floor" : `${ordinal(a)} Floor`, kind: "FLOOR" });
-    if (a === 0 && upperGround)
-      list.push({ name: "Upper Ground Floor", kind: "FLOOR" });
   }
   if (terrace) list.push({ name: "Terrace", kind: "TERRACE" });
   return list.map((f, i) => ({ ...f, order: i }));
@@ -62,7 +59,6 @@ interface Project {
 const STATUS_TINT: Record<string, { bg: string; fg: string }> = {
   ACTIVE: { bg: "#dcfce7", fg: "#15803d" },
   PLANNING: { bg: "#dbeafe", fg: "#1d4ed8" },
-  DESIGN: { bg: "#ede9fe", fg: "#6d28d9" },
   ON_HOLD: { bg: "#fef3c7", fg: "#b45309" },
   UPCOMING: { bg: "#e0f2fe", fg: "#0369a1" },
   COMPLETED: { bg: "#eef2f7", fg: "#475569" },
@@ -99,7 +95,11 @@ export default function ProjectsPage() {
         }
         action={
           role === "ADMIN" && (
-            <button className="btn btn-primary" onClick={() => setOpen(true)}>
+            <button
+              className="btn btn-primary"
+              data-testid="new-project-btn"
+              onClick={() => setOpen(true)}
+            >
               <Plus /> New Project
             </button>
           )
@@ -237,15 +237,13 @@ function NewProjectModal({
     location: "",
     status: "PLANNING",
   });
-  const [above, setAbove] = useState(3);
-  const [basements, setBasements] = useState(0);
-  const [stilt, setStilt] = useState(false);
-  const [upperGround, setUpperGround] = useState(false);
-  const [terrace, setTerrace] = useState(false);
+  const [above, setAbove] = useState(4);
+  const [basements, setBasements] = useState(1);
+  const [terrace, setTerrace] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const floors = buildFloors(basements, above, stilt, upperGround, terrace);
+  const floors = buildFloors(basements, above, terrace);
 
   function set(k: string, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -324,18 +322,32 @@ function NewProjectModal({
               max={5}
               onChange={setBasements}
             />
-            <Toggle
-              label="Stilt floor"
-              hint="Parking / services level between basement and ground"
-              checked={stilt}
-              onChange={setStilt}
-            />
-            <Toggle
-              label="Upper ground floor"
-              hint="Between the ground and first floors"
-              checked={upperGround}
-              onChange={setUpperGround}
-            />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                fontSize: "0.85rem",
+                color: "#1e293b",
+                fontWeight: 600,
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#eef2f7",
+                  color: "#475569",
+                  borderRadius: 999,
+                  padding: "0.2rem 0.6rem",
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                }}
+              >
+                Stilt floor · always included
+              </span>
+            </div>
             <Toggle
               label="Terrace"
               hint="Rooftop level with its own drawing set"

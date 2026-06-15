@@ -10,7 +10,6 @@ import {
   ArrowUpRight,
   Upload,
   Check,
-  X,
   MousePointerClick,
   ArrowUpDown,
   Pencil,
@@ -32,10 +31,11 @@ import {
 } from "@/components/ui";
 import Building, { type BuildingFloor, type FloorMeta } from "@/components/Building";
 import { EASE } from "@/components/motion";
-import { PROJECT_STATUS_LABEL, fmtDateTime, countdown } from "@/lib/format";
+import { PROJECT_STATUS_LABEL } from "@/lib/format";
 import AssignTaskModal from "@/components/AssignTaskModal";
 import TaskEditModal from "@/components/TaskEditModal";
 import EditProjectModal from "@/components/EditProjectModal";
+import DrawingReviewModal from "@/components/DrawingReviewModal";
 import AnalyticsTab from "@/components/project/AnalyticsTab";
 import TeamTab from "@/components/project/TeamTab";
 import RevisionsTab from "@/components/project/RevisionsTab";
@@ -97,6 +97,7 @@ export default function ProjectDetailPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [role, setRole] = useState("");
+  const [meId, setMeId] = useState("");
   const [tab, setTab] = useState<TabKey>("BUILDING");
   const [selected, setSelected] = useState<string | null>(search.get("floor"));
 
@@ -120,12 +121,13 @@ export default function ProjectDetailPage() {
     const [p, t, me, c] = await Promise.all([
       api<{ project: Project }>(`/api/projects/${id}`),
       api<{ tasks: Task[] }>(`/api/tasks?projectId=${id}`),
-      api<{ user: { role: string } }>("/api/auth/me"),
+      api<{ user: { id: string; role: string } }>("/api/auth/me"),
       api<{ categories: Category[] }>(`/api/categories?projectId=${id}`),
     ]);
     setProject(p.project);
     setTasks(t.tasks);
     setRole(me.user?.role ?? "");
+    setMeId(me.user?.id ?? "");
     setCats(c.categories);
     setSelected(
       (cur) =>
@@ -574,7 +576,7 @@ export default function ProjectDetailPage() {
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {discTasks.map((t) => (
-                        <TaskActionRow key={t.id} task={t} role={role} onChanged={load} />
+                        <TaskActionRow key={t.id} task={t} role={role} meId={meId} onChanged={load} />
                       ))}
                     </div>
                   )}
@@ -761,23 +763,22 @@ function FloorRegister({
   );
 }
 
-/* ----- designer / on-site task row (inline actions) ----- */
+/* ----- designer / on-site task row ----- */
 function TaskActionRow({
   task,
   role,
+  meId,
   onChanged,
 }: {
   task: Task;
   role: string;
+  meId: string;
   onChanged: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
-  const pending = task.status === "PENDING_REVIEW" || task.status === "REVISION_SUBMITTED";
-  const cd = pending && task.deadline ? countdown(task.deadline) : null;
-  void cd;
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   async function upload(file: File) {
     setBusy(true);
@@ -794,22 +795,6 @@ function TaskActionRow({
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
-    }
-  }
-
-  async function approve() {
-    setBusy(true);
-    setError("");
-    try {
-      await api(`/api/tasks/${task.id}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision: "APPROVED" }),
-      });
-      onChanged();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-      setBusy(false);
     }
   }
 
@@ -836,10 +821,19 @@ function TaskActionRow({
       <ErrorText>{error}</ErrorText>
 
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-        {role === "DESIGNER" || role === "ONSITE" ? (
+        {role === "ONSITE" ? (
+          /* on-site: open the drawing first; approve / reject live inside it */
+          <button
+            className="btn btn-primary"
+            data-testid="open-drawing-btn"
+            style={{ fontSize: "0.8rem" }}
+            onClick={() => setReviewOpen(true)}
+          >
+            <ArrowUpRight size={14} /> Open Drawing
+          </button>
+        ) : role === "DESIGNER" ? (
           <>
-            {/* assignee (any role) — upload / revise inline */}
-            {task.status !== "APPROVED" && role === "DESIGNER" && (
+            {task.status !== "APPROVED" && (
               <>
                 <input
                   ref={fileRef}
@@ -859,22 +853,6 @@ function TaskActionRow({
                 </button>
               </>
             )}
-            {/* on-site: quick approve; rejection (voice memo) lives on the task page */}
-            {role === "ONSITE" && pending && (
-              <>
-                <button
-                  className="btn btn-success"
-                  style={{ fontSize: "0.8rem" }}
-                  disabled={busy}
-                  onClick={approve}
-                >
-                  <Check size={14} /> Approve
-                </button>
-                <Link href={`/tasks/${task.id}`} className="btn btn-danger" style={{ fontSize: "0.8rem" }}>
-                  <X size={14} /> Reject…
-                </Link>
-              </>
-            )}
             <Link href={`/tasks/${task.id}`} className="btn btn-ghost" style={{ fontSize: "0.8rem" }}>
               View <ArrowUpRight size={14} />
             </Link>
@@ -885,6 +863,15 @@ function TaskActionRow({
           </Link>
         )}
       </div>
+
+      {reviewOpen && (
+        <DrawingReviewModal
+          taskId={task.id}
+          meId={meId}
+          onClose={() => setReviewOpen(false)}
+          onDone={onChanged}
+        />
+      )}
     </div>
   );
 }

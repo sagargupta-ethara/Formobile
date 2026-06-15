@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { ApiError, fail, requireUser } from "@/lib/api";
 import { contentType, readFile } from "@/lib/storage";
-import { onsiteCanSeeVersion, onsiteIsRouted } from "@/lib/access";
+import { onsiteCanSeeVersion, onsiteIsRouted, rejectedVersionSet } from "@/lib/access";
 
 // GET /api/files/:id — stream a stored design file with RBAC + version gating.
 export async function GET(
@@ -23,6 +23,7 @@ export async function GET(
             currentVersion: true,
             category: { select: { specializationId: true } },
             assignees: { select: { userId: true } },
+            reviews: { select: { version: true, decision: true } },
           },
         },
       },
@@ -33,8 +34,12 @@ export async function GET(
     const isAssignee =
       task.designerId === user.id ||
       task.assignees.some((a) => a.userId === user.id);
-    if (user.role === "DESIGNER" && !isAssignee) {
-      throw new ApiError(403, "Forbidden");
+    if (user.role === "DESIGNER") {
+      if (!isAssignee) throw new ApiError(403, "Forbidden");
+      // the rejected plan itself is hidden from designers — only admins keep it
+      const rejectedVersions = rejectedVersionSet(task.reviews);
+      if (rejectedVersions.has(file.version))
+        throw new ApiError(403, "The rejected plan is no longer available");
     }
     if (user.role === "ONSITE" && !isAssignee) {
       // Onsite reviewers (including the dedicated reviewer for this task)

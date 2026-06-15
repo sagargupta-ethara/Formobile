@@ -20,7 +20,6 @@ enum UserStatus {
 
 enum ProjectStatus {
   PLANNING
-  DESIGN
   ACTIVE
   ON_HOLD
   UPCOMING

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { ApiError, fail, json, requireRole, requireUser } from "@/lib/api";
-import { onsiteIsRouted, visibleFiles } from "@/lib/access";
+import { onsiteIsRouted, visibleFiles, rejectedVersionSet } from "@/lib/access";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { fmtDateTime } from "@/lib/format";
@@ -58,7 +58,17 @@ export async function GET(
 
     // Enforce version visibility: on-site reviewers never see superseded /
     // rejected versions — only the current one while it is under review.
-    const files = isAssignee ? task.files : visibleFiles(user, task, task.files);
+    // Designers keep their history but the rejected plan itself is hidden
+    // (only admins retain rejected drawings).
+    const rejectedVersions = rejectedVersionSet(task.reviews);
+    let files;
+    if (user.role === "ADMIN") {
+      files = task.files;
+    } else if (user.role === "DESIGNER") {
+      files = visibleFiles(user, task, task.files, rejectedVersions);
+    } else {
+      files = isAssignee ? task.files : visibleFiles(user, task, task.files);
+    }
 
     // On-site reviewers also shouldn't see other reviewers' comment history of
     // older versions clutter; keep it simple and show all decisions (the audit

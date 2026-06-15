@@ -13,7 +13,7 @@ const createSchema = z.object({
   startDate: z.string().optional().nullable(),
   expectedCompletion: z.string().optional().nullable(),
   status: z
-    .enum(["PLANNING", "DESIGN", "ACTIVE", "ON_HOLD", "UPCOMING", "COMPLETED"])
+    .enum(["PLANNING", "ACTIVE", "ON_HOLD", "UPCOMING", "COMPLETED"])
     .optional(),
   floors: z
     .array(

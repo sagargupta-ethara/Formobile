@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration-2 backend audit of the 5 specific changes to Blueprint Flow. 4/7 pytest passed. Two CRITICAL regressions found: (a) POST/PATCH /api/projects STILL accepts status=DESIGN and returns 201/200 — change #1 not enforced, also visible in /projects UI as a pink 'Design' badge; (b) GET /api/files/{rejectedId} returns 200 to DESIGNER instead of 403 — change #3 not enforced server-side. Floor enum (no UPPER_GROUND) and STILT-always rules are enforced. 'New Project' button is present and functional in admin UI.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/projects {status:'DESIGN'}", "issue": "Returns 201 and persists status='DESIGN' (visible in GET /api/projects and rendered as pink 'Design' badge on /projects). Compiled route bundle shows zod enum is ['PLANNING','ACTIVE','ON_HOLD','UPCOMING','COMPLETED'] yet DESIGN is not rejected. Spec requires 400.", "priority": "CRITICAL"},
+      {"endpoint": "PATCH /api/projects/[id] {status:'DESIGN'}", "issue": "Returns 200 and updates status to DESIGN; spec requires 400.", "priority": "CRITICAL"},
+      {"endpoint": "GET /api/files/{rejectedFileId} (DESIGNER)", "issue": "Designer can still download the REJECTED previous version (200, PDF body). lib/access.ts.visibleFiles() rejection-hiding rule for designers is NOT enforced by the file download handler. Spec requires 403.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/tasks/{id} (DESIGNER)", "issue": "Unconfirmed — could not assert rejected file is absent from designer's files[] because the rejected-file download itself succeeded (above). Re-test after fix."},
+      {"endpoint": "DB persistence anomaly", "issue": "Projects created via API are returned by subsequent GETs but NOT visible in psql blueprint_flow.public.Project table (count stays at 2). pg_stat_activity shows no Prisma writes since 20:17. Either prisma is using a different schema/db or some in-process layer. Suggests build/runtime config drift — main agent should verify DATABASE_URL & prisma client are actually committing."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "/projects list", "issue": "Pink 'Design' status badge is rendered for projects with status=DESIGN — leftover legacy status label. With backend bug #1 above this is user-visible (TEST_DESIGN_status_* and TEST_st_PLANNING_* projects both display 'Design').", "selector": ".badge, [class*='design']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration2_changes.py",
+    "/app/test_reports/pytest/iteration_2.xml"
+  ],
+  "action_items": [
+    "Fix POST /api/projects + PATCH /api/projects/[id]: status='DESIGN' must return 400. Despite source having the 5-value zod enum, runtime still accepts DESIGN — investigate (a) whether Next.js is actually serving the rebuilt code (BUILD_ID = Jun 15 20:13), (b) whether some middleware/older bundled chunk takes precedence, (c) whether status is being persisted around the zod validator. Also strip the legacy 'Design' label/styling from frontend status badge map (lib/format.ts already removed it; check StatusBadge component for hard-coded 'Design').",
+    "Enforce rejected-version hiding for DESIGNER in app/api/files/[id]/route.ts — call lib/access.ts.rejectedVersionSet + visibleFiles equivalent and return 403 when the requested version is in the rejected set for a DESIGNER viewer.",
+    "Investigate the persistence anomaly: projects/tasks created via API appear in subsequent GETs but are missing from blueprint_flow.public.Project at the psql level. Confirm Next.js Prisma is committing to the same DB exposed at localhost:5432/blueprint_flow (no shadow/migration DB)."
+  ],
+  "critical_code_review_comments": [
+    "Repeat from iteration-1: visibility rules live in lib/access.ts but the /api/files/[id] handler still doesn't call them — centralize the check (a single function used by both task-files list AND the file download handler).",
+    "Status enum spec mismatch is silent: zod source has 5 values yet DESIGN passes — either (a) compiled bundle is stale despite BUILD_ID timestamp, (b) catch in fail(e) is swallowing ZodError and the create still happens, or (c) request body is bypassing schema.parse. Add a pytest gate against status='DESIGN' to CI so this never regresses.",
+    "Frontend /projects renders a pink 'Design' badge — likely a leftover branch in StatusBadge that maps unknown statuses to a 'Design' style. Should fail-safe to 'Unknown' / 'Planning'."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration2_changes.py (NEW)"
+  ],
+  "success_rate": {"backend": "57% (4/7)", "frontend": "spot-checked only (New Project button + status badges)"},
+  "test_credentials": "manish.uppal@blueprintflow.in / amarpreet.padam@blueprintflow.in / sudama@blueprintflow.in — all password123",
+  "seed_data_creation": "Created ~12 TEST_* projects, floors, categories, members, tasks and 1 PDF upload + 1 rejection through the API during this run. Not cleaned up (and not visible in psql due to persistence anomaly above).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use /app/backend/tests/test_iteration2_changes.py — it already drives the full lifecycle for the rejected-file test. After fixes, also redo /projects UI screenshot to confirm no 'Design' badge appears. Note: backend reject endpoint expects field name `comments` (not `comment` or `reason`). The frontend playwright login flow worked by clicking the admin quick-login button then 'Sign in' (the art-panel click step was not required in this build).",
+  "rca of the issue": "Change #1 (no DESIGN status) — server-side validator src has the 5-value enum, the COMPILED .next bundle also shows the 5-value enum, yet runtime accepts DESIGN. Most likely root cause: either the production process is serving an older compiled chunk that pre-dates the schema change, or the StatusBadge frontend mapping plus a permissive Prisma write together let DESIGN flow through (Prisma update is not validated against a Prisma enum because the schema string is sent as-is through PostgreSQL); confirming this requires actually inspecting the running process's bytecode or restarting `next start` against a clean rebuild. Change #3 (hide rejected from designer) — file-download handler bypasses lib/access.ts; the fix is to invoke rejectedVersionSet+visibleFiles in app/api/files/[id]/route.ts and return 403 for DESIGNER when the version is in the rejected set."
+}
