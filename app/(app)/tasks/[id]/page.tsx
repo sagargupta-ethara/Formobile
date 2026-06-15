@@ -355,7 +355,8 @@ export default function TaskDetailPage() {
             )}
           </div>
 
-          {/* Immutable activity trail (Module 12) */}
+          {/* Immutable activity trail (Module 12) — hidden from On-Site */}
+          {role !== "ONSITE" && (
           <div className="card" style={{ padding: "1.2rem" }}>
             <div
               style={{
@@ -417,6 +418,7 @@ export default function TaskDetailPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 

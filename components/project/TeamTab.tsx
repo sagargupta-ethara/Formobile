@@ -111,7 +111,7 @@ export default function TeamTab({
             />
           </div>
           <button className="btn btn-primary" disabled={!adding || busy} onClick={add}>
-            <UserPlus size={15} /> Add to Project
+            <UserPlus size={15} /> Add Team Member
           </button>
         </div>
       )}

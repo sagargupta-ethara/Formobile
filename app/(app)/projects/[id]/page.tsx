@@ -86,7 +86,7 @@ const TABS = [
   { key: "ANALYTICS", label: "Analytics", icon: <BarChart3 size={15} /> },
   { key: "TEAM", label: "Team", icon: <Users size={15} /> },
   { key: "REVISIONS", label: "Revisions", icon: <History size={15} /> },
-  { key: "SETTINGS", label: "Settings", icon: <Settings2 size={15} /> },
+  { key: "SETTINGS", label: "Drawing Master", icon: <Settings2 size={15} /> },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
