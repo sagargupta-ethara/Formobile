@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Check, Camera, FileText } from "lucide-react";
+import { X, Check, Camera, FileText, ZoomIn, ZoomOut, RotateCw, Maximize, Download, ExternalLink } from "lucide-react";
 import { api, ErrorText } from "@/components/ui";
 import VoiceRecorder, { recorderSupported } from "@/components/VoiceRecorder";
 import { fmtBytes } from "@/lib/format";
@@ -217,12 +217,7 @@ export default function DrawingReviewModal({
                   No drawing available to review.
                 </p>
               ) : canPreview ? (
-                <iframe
-                  data-testid="drawing-preview-frame"
-                  title={currentFile.fileName}
-                  src={`/api/files/${currentFile.id}`}
-                  style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
-                />
+                <DrawingViewer file={currentFile} ext={ext} />
               ) : (
                 <div style={{ textAlign: "center", color: "#cbd5e1", padding: "1.5rem" }}>
                   <FileText size={40} style={{ marginBottom: 10, opacity: 0.7 }} />
@@ -393,5 +388,211 @@ export default function DrawingReviewModal({
       </motion.div>
     </AnimatePresence>,
     document.body
+  );
+}
+
+
+/* ---------- zoomable / pannable drawing preview ---------- */
+const IMG_EXT = new Set(["png", "jpg", "jpeg", "webp", "gif"]);
+
+const tbtnStyle: React.CSSProperties = {
+  width: 34,
+  height: 34,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  color: "#e2e8f0",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  textDecoration: "none",
+};
+
+function TBtn({
+  children,
+  onClick,
+  title,
+  testid,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  title: string;
+  testid: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={testid}
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ ...tbtnStyle, opacity: disabled ? 0.35 : 1, cursor: disabled ? "default" : "pointer" }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Divider() {
+  return <span style={{ width: 1, height: 20, background: "rgba(255,255,255,0.18)", margin: "0 2px" }} />;
+}
+
+function DrawingViewer({ file, ext }: { file: FileRec; ext: string }) {
+  const url = `/api/files/${file.id}`;
+  const isImage = IMG_EXT.has(ext);
+  const [scale, setScale] = useState(1);
+  const [rot, setRot] = useState(0);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const minScale = isImage ? 0.5 : 1;
+  const maxScale = isImage ? 5 : 3;
+  const clamp = (s: number) => Math.min(maxScale, Math.max(minScale, s));
+  const zoomBy = (d: number) => setScale((s) => clamp(Math.round((s + d) * 100) / 100));
+  const reset = () => {
+    setScale(1);
+    setRot(0);
+    setPos({ x: 0, y: 0 });
+  };
+
+  function onWheel(e: React.WheelEvent) {
+    if (!isImage) return;
+    e.preventDefault();
+    zoomBy(e.deltaY < 0 ? 0.2 : -0.2);
+  }
+  function onDown(e: React.MouseEvent) {
+    if (!isImage || scale <= 1) return;
+    drag.current = { x: e.clientX, y: e.clientY, ox: pos.x, oy: pos.y };
+    setDragging(true);
+  }
+  function onMove(e: React.MouseEvent) {
+    if (!drag.current) return;
+    setPos({
+      x: drag.current.ox + (e.clientX - drag.current.x),
+      y: drag.current.oy + (e.clientY - drag.current.y),
+    });
+  }
+  function onUp() {
+    drag.current = null;
+    setDragging(false);
+  }
+
+  return (
+    <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", background: "#0f172a" }}>
+      {isImage ? (
+        <div
+          onWheel={onWheel}
+          onMouseDown={onDown}
+          onMouseMove={onMove}
+          onMouseUp={onUp}
+          onMouseLeave={onUp}
+          onDoubleClick={() => (scale > 1 ? reset() : setScale(2))}
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "grid",
+            placeItems: "center",
+            overflow: "hidden",
+            cursor: scale > 1 ? (dragging ? "grabbing" : "grab") : "zoom-in",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            data-testid="drawing-preview-image"
+            src={url}
+            alt={file.fileName}
+            draggable={false}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              userSelect: "none",
+              transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale}) rotate(${rot}deg)`,
+              transition: dragging ? "none" : "transform 0.15s ease",
+            }}
+          />
+        </div>
+      ) : (
+        <div style={{ width: "100%", height: "100%", overflow: "auto", background: "#525659" }}>
+          <iframe
+            data-testid="drawing-preview-frame"
+            title={file.fileName}
+            src={url}
+            style={{
+              width: `${100 * scale}%`,
+              height: `${100 * scale}%`,
+              minHeight: "100%",
+              border: "none",
+              background: "#fff",
+              display: "block",
+            }}
+          />
+        </div>
+      )}
+
+      {/* floating toolbar */}
+      <div
+        data-testid="drawing-toolbar"
+        style={{
+          position: "absolute",
+          bottom: 14,
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+          background: "rgba(15,23,42,0.85)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 999,
+          padding: "6px 8px",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <TBtn testid="zoom-out-btn" title="Zoom out" onClick={() => zoomBy(-0.25)} disabled={scale <= minScale}>
+          <ZoomOut size={18} />
+        </TBtn>
+        <button
+          type="button"
+          data-testid="zoom-reset-btn"
+          title="Reset zoom"
+          onClick={reset}
+          style={{
+            color: "#e2e8f0",
+            fontSize: "0.74rem",
+            fontWeight: 700,
+            minWidth: 46,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          {Math.round(scale * 100)}%
+        </button>
+        <TBtn testid="zoom-in-btn" title="Zoom in" onClick={() => zoomBy(0.25)} disabled={scale >= maxScale}>
+          <ZoomIn size={18} />
+        </TBtn>
+        <Divider />
+        {isImage && (
+          <TBtn testid="rotate-btn" title="Rotate" onClick={() => setRot((r) => (r + 90) % 360)}>
+            <RotateCw size={18} />
+          </TBtn>
+        )}
+        <TBtn testid="fit-btn" title="Fit to screen" onClick={reset}>
+          <Maximize size={17} />
+        </TBtn>
+        <Divider />
+        <a data-testid="open-newtab-btn" href={url} target="_blank" rel="noreferrer" title="Open in new tab" style={tbtnStyle}>
+          <ExternalLink size={17} />
+        </a>
+        <a data-testid="download-drawing-btn" href={`${url}?download=1`} title="Download" style={tbtnStyle}>
+          <Download size={17} />
+        </a>
+      </div>
+    </div>
   );
 }
