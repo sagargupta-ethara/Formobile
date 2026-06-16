@@ -37,12 +37,29 @@ function readEnvFile(p: string): Record<string, string> {
  * injected WITHOUT a db path (the db name comes from DB_NAME separately).
  * Preserves an existing db path and any query string.
  */
+// Query-string options that Prisma's mongodb connector rejects (Emergent's
+// managed Atlas URL ships some of these, e.g. timeoutMS).
+const UNSUPPORTED_QUERY_PARAMS = new Set(["timeoutms"]);
+
+function sanitizeQuery(query: string): string {
+  if (!query || query === "?") return "";
+  const kept = query
+    .slice(1)
+    .split("&")
+    .filter((pair) => {
+      if (!pair) return false;
+      const key = pair.split("=")[0].toLowerCase();
+      return !UNSUPPORTED_QUERY_PARAMS.has(key);
+    });
+  return kept.length ? `?${kept.join("&")}` : "";
+}
+
 function withDatabase(rawUrl: string, dbName?: string): string {
   const schemeEnd = rawUrl.indexOf("://");
   if (schemeEnd === -1) return rawUrl;
 
   const qIdx = rawUrl.indexOf("?");
-  const query = qIdx === -1 ? "" : rawUrl.slice(qIdx);
+  const query = sanitizeQuery(qIdx === -1 ? "" : rawUrl.slice(qIdx));
   const base = qIdx === -1 ? rawUrl : rawUrl.slice(0, qIdx);
 
   const afterScheme = base.slice(schemeEnd + 3);

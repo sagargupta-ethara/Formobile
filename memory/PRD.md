@@ -101,6 +101,18 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-16 (v4: strip unsupported Atlas query param)
+- After the binaryTargets fix, prod surfaced the NEXT error:
+  `MongoDB connection string error: timeoutms is an invalid option`. Emergent's
+  managed Atlas `MONGO_URL` includes a `timeoutMS=...` query param that Prisma's
+  mongodb connector rejects. Fixed in `lib/db.ts` `withDatabase()` —
+  `sanitizeQuery()` drops denylisted params (`timeoutms`) while preserving valid
+  ones (retryWrites, w, replicaSet, …). Verified preview still 200 / 25 users.
+- Chain of prod blockers resolved in order: (1) Next.js had no MONGO_URL → load
+  from env/backend.env; (2) Atlas URL had no db name → merge DB_NAME; (3) Prisma
+  query engine binary mismatch (musl vs debian) → binaryTargets; (4) timeoutMS
+  query param invalid → sanitizeQuery.
+
 ## Changelog — 2026-06-16 (v3: THE real prod fix — Prisma engine binary)
 - **🎯 Actual production login 500 root cause found** via a temporary diagnostic
   route (`/api/debug/db`, redacts creds): production returned
