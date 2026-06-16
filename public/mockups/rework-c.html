@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>On-Site rework · Option C — Search + Compact</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,560;9..144,600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0f172a;--ink2:#1e293b;--muted:#64748b;--faint:#94a3b8;--line:#e3e9f2;--canvas:#eef1f7;--accent:#2563eb;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--canvas);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  .serif{font-family:'Fraunces',Georgia,serif;}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;}
+  .card{background:linear-gradient(180deg,#fff,#fdfdfe);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(15,23,42,.05);}
+  .eyebrow{font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);display:inline-flex;align-items:center;gap:8px;}
+  .eyebrow::before{content:"";width:18px;height:2px;border-radius:9px;background:linear-gradient(90deg,#a8763e,#2563eb);}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:999px;padding:.5rem .9rem;font-size:.84rem;font-weight:600;white-space:nowrap;box-shadow:0 1px 2px rgba(15,23,42,.04);cursor:pointer;}
+  .pill .cnt{font-family:'JetBrains Mono',monospace;font-size:.66rem;background:#f1f5f9;border-radius:999px;padding:.06rem .4rem;color:#64748b;}
+  .pill-active{background:linear-gradient(180deg,#243249,#0f172a);color:#fff;border-color:transparent;box-shadow:0 6px 16px -8px rgba(15,23,42,.6);}
+  .pill-active .cnt{background:rgba(255,255,255,.18);color:#fff;}
+  .floor{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:11px;padding:.55rem .8rem;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer;}
+  .floor small{color:#94a3b8;font-weight:600;}
+  .floor-active{background:linear-gradient(180deg,#243249,#0f172a);color:#fff;border-color:transparent;}
+  .floor-active small{color:#cbd5e1;}
+  .badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:600;padding:.24rem .6rem;border-radius:999px;border:1px solid rgba(15,23,42,.04);}
+  .b-appr{background:#dcfce7;color:#15803d;} .b-pend{background:#fef3c7;color:#b45309;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;font-size:.82rem;font-weight:550;padding:.5rem .8rem;border-radius:10px;border:1px solid transparent;cursor:pointer;white-space:nowrap;}
+  .btn-primary{background:linear-gradient(180deg,#243249,#0f172a);color:#fff;box-shadow:0 1px 2px rgba(15,23,42,.3);}
+  .btn-ghost{background:#fff;border-color:var(--line);color:var(--ink2);box-shadow:0 1px 2px rgba(15,23,42,.04);}
+  .nav{display:flex;align-items:center;gap:11px;padding:.6rem .8rem;border-radius:10px;color:#475569;font-weight:600;font-size:.9rem;}
+  .nav-active{background:#e8eefb;color:#1d4ed8;}
+  .drow:hover{background:#f6f9fd;}
+</style>
+</head>
+<body>
+<div class="flex min-h-screen">
+  <aside class="w-[244px] bg-white border-r relative" style="border-color:var(--line)">
+    <div class="px-5 py-5 flex items-center gap-3 border-b" style="border-color:var(--line)">
+      <div class="w-9 h-9 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">◈</div>
+      <div><div class="serif font-semibold text-[1.05rem] leading-none">Blueprint Flow</div><div class="text-[10px] tracking-widest text-slate-400 mt-1">DESIGN · SITE</div></div>
+    </div>
+    <nav class="p-3 space-y-1"><div class="nav nav-active">▣ Projects</div><div class="nav">✓ Reviews</div><div class="nav">◔ Profile</div></nav>
+    <div class="absolute bottom-4 left-3 right-3">
+      <div class="flex items-center gap-3 p-2 rounded-xl border" style="border-color:var(--line)">
+        <img src="https://images.unsplash.com/photo-1672748341520-6a839e6c05bb?crop=entropy&cs=srgb&fm=jpg&w=80&q=70&ixlib=rb-4.1.0" class="w-9 h-9 rounded-full object-cover"/>
+        <div><div class="text-sm font-semibold leading-none">Sudama</div><div class="text-[11px] text-slate-400 mt-1">On-Site</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 px-9 py-7 max-w-[1180px]">
+    <div class="text-center mb-1"><span class="inline-block mono text-[11px] font-bold tracking-widest text-slate-400 bg-white border rounded-full px-3 py-1" style="border-color:var(--line)">OPTION C · SEARCH + COMPACT (best for many drawings)</span></div>
+    <div class="flex items-end justify-between gap-4 mb-6 mt-3">
+      <div>
+        <div class="eyebrow mb-2">Project · ABC-001</div>
+        <h1 class="serif text-[2rem] font-[560] tracking-tight leading-tight m-0">ABC Corporate Tower</h1>
+        <p class="text-slate-500 text-[.92rem] mt-1">Active · Sector 62, Noida</p>
+      </div>
+      <span class="badge b-appr">● Active</span>
+    </div>
+
+    <!-- floor bar -->
+    <div class="card p-3 mb-4">
+      <div class="text-[.66rem] font-bold tracking-widest text-slate-400 uppercase mb-2 px-1">Floors — tap to open</div>
+      <div class="flex gap-2 overflow-x-auto pb-1">
+        <div class="floor">Basement <small>0</small></div>
+        <div class="floor">Stilt <small>2</small></div>
+        <div class="floor floor-active">Ground <small>14</small></div>
+        <div class="floor">First <small>11</small></div>
+        <div class="floor">Second <small>9</small></div>
+        <div class="floor">Third <small>9</small></div>
+        <div class="floor">Terrace <small>3</small></div>
+      </div>
+    </div>
+
+    <!-- department pills + big search -->
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <div class="pill pill-active">Interior Design <span class="cnt">14</span></div>
+      <div class="pill">Structure <span class="cnt">6</span></div>
+      <div class="pill">MEP <span class="cnt">8</span></div>
+      <div class="pill">Woodwork <span class="cnt">5</span></div>
+    </div>
+    <div class="card flex items-center gap-3 px-4 py-3 mb-4">
+      <span class="text-slate-400 text-lg">🔍</span>
+      <span class="text-slate-400 text-[.95rem] flex-1">Search 14 drawings by name…</span>
+      <span class="badge" style="background:#f1f5f9;color:#475569">Signed ✓</span>
+      <span class="badge" style="background:#fff;border:1px solid var(--line);color:#94a3b8">Pending</span>
+    </div>
+
+    <!-- two-column compact list -->
+    <div id="cols" class="grid gap-3" style="grid-template-columns:1fr 1fr"></div>
+    <p class="text-center text-slate-400 text-xs mt-7">Mockup for client review · matches current Blueprint Flow theme · not final UI</p>
+  </main>
+</div>
+<script>
+const drawings=[
+ ["Furniture Layout Plan","V3"],["False Ceiling Layout","V2"],
+ ["Flooring & Finishes Plan","V2"],["Wall Paneling Details","V1"],
+ ["Reflected Ceiling Plan","V2"],["Wardrobe & Storage Details","V1"],
+ ["Door & Window Schedule","V1"],["Lobby Elevation","V4"],
+ ["Toilet Elevations","V2"],["Painting & Finish Schedule","V1"],
+ ["Loose Furniture Layout","V1"],["Soft Furnishing Plan","V1"],
+ ["Pantry Elevation","V2"],["Signage & Graphics","V1"],
+];
+document.getElementById('cols').innerHTML=drawings.map(d=>`
+ <div class="drow card flex items-center gap-3 px-4 py-3 cursor-pointer">
+   <div class="w-9 h-9 rounded-lg grid place-items-center text-slate-400 flex-shrink-0" style="background:#f1f5f9">📄</div>
+   <div class="min-w-0 flex-1">
+     <div class="font-semibold text-[.88rem] truncate">${d[0]}</div>
+     <div class="flex items-center gap-2 mt-0.5"><span class="mono text-[.72rem] text-slate-400">${d[1]}</span><span class="badge b-appr" style="padding:.1rem .45rem;font-size:.66rem">✓ Signed</span></div>
+   </div>
+   <button class="btn btn-ghost" style="padding:.38rem .7rem;font-size:.76rem">Open ↗</button>
+ </div>`).join('');
+</script>
+</body>
+</html>

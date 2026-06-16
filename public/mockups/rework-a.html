@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>On-Site rework · Option A — Drawing List</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,560;9..144,600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0f172a;--ink2:#1e293b;--muted:#64748b;--faint:#94a3b8;--line:#e3e9f2;--canvas:#eef1f7;--accent:#2563eb;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--canvas);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  .serif{font-family:'Fraunces',Georgia,serif;}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;}
+  .card{background:linear-gradient(180deg,#fff,#fdfdfe);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(15,23,42,.05);}
+  .eyebrow{font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);display:inline-flex;align-items:center;gap:8px;}
+  .eyebrow::before{content:"";width:18px;height:2px;border-radius:9px;background:linear-gradient(90deg,#a8763e,#2563eb);}
+  .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:999px;padding:.5rem .9rem;font-size:.84rem;font-weight:600;white-space:nowrap;box-shadow:0 1px 2px rgba(15,23,42,.04);cursor:pointer;}
+  .pill .cnt{font-family:'JetBrains Mono',monospace;font-size:.66rem;background:#f1f5f9;border-radius:999px;padding:.06rem .4rem;color:#64748b;}
+  .pill-active{background:linear-gradient(180deg,#243249,#0f172a);color:#fff;border-color:transparent;box-shadow:0 6px 16px -8px rgba(15,23,42,.6);}
+  .pill-active .cnt{background:rgba(255,255,255,.18);color:#fff;}
+  .floor{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;color:var(--ink2);border-radius:11px;padding:.55rem .8rem;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer;}
+  .floor small{color:#94a3b8;font-weight:600;}
+  .floor-active{background:linear-gradient(180deg,#243249,#0f172a);color:#fff;border-color:transparent;}
+  .floor-active small{color:#cbd5e1;}
+  .badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:600;padding:.24rem .6rem;border-radius:999px;border:1px solid rgba(15,23,42,.04);}
+  .b-appr{background:#dcfce7;color:#15803d;} .b-pend{background:#fef3c7;color:#b45309;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;font-size:.82rem;font-weight:550;padding:.5rem .8rem;border-radius:10px;border:1px solid transparent;cursor:pointer;white-space:nowrap;}
+  .btn-primary{background:linear-gradient(180deg,#243249,#0f172a);color:#fff;box-shadow:0 1px 2px rgba(15,23,42,.3);}
+  .btn-ghost{background:#fff;border-color:var(--line);color:var(--ink2);box-shadow:0 1px 2px rgba(15,23,42,.04);}
+  .nav{display:flex;align-items:center;gap:11px;padding:.6rem .8rem;border-radius:10px;color:#475569;font-weight:600;font-size:.9rem;}
+  .nav-active{background:#e8eefb;color:#1d4ed8;}
+  .row:hover{background:#f6f9fd;}
+</style>
+</head>
+<body>
+<div class="flex min-h-screen">
+  <!-- sidebar -->
+  <aside class="w-[244px] bg-white border-r" style="border-color:var(--line)">
+    <div class="px-5 py-5 flex items-center gap-3 border-b" style="border-color:var(--line)">
+      <div class="w-9 h-9 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">◈</div>
+      <div><div class="serif font-semibold text-[1.05rem] leading-none">Blueprint Flow</div><div class="text-[10px] tracking-widest text-slate-400 mt-1">DESIGN · SITE</div></div>
+    </div>
+    <nav class="p-3 space-y-1">
+      <div class="nav nav-active">▣ Projects</div>
+      <div class="nav">✓ Reviews</div>
+      <div class="nav">◔ Profile</div>
+    </nav>
+    <div class="absolute bottom-4 left-3 right-3" style="width:220px">
+      <div class="flex items-center gap-3 p-2 rounded-xl border" style="border-color:var(--line)">
+        <img src="https://images.unsplash.com/photo-1672748341520-6a839e6c05bb?crop=entropy&cs=srgb&fm=jpg&w=80&q=70&ixlib=rb-4.1.0" class="w-9 h-9 rounded-full object-cover"/>
+        <div><div class="text-sm font-semibold leading-none">Sudama</div><div class="text-[11px] text-slate-400 mt-1">On-Site</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- content -->
+  <main class="flex-1 px-9 py-7 max-w-[1180px]">
+    <div class="text-center mb-1"><span class="inline-block mono text-[11px] font-bold tracking-widest text-slate-400 bg-white border rounded-full px-3 py-1" style="border-color:var(--line)">OPTION A · DRAWING LIST</span></div>
+
+    <!-- header -->
+    <div class="flex items-end justify-between gap-4 mb-6 mt-3">
+      <div>
+        <div class="eyebrow mb-2">Project · ABC-001</div>
+        <h1 class="serif text-[2rem] font-[560] tracking-tight leading-tight m-0">ABC Corporate Tower</h1>
+        <p class="text-slate-500 text-[.92rem] mt-1">Active · Sector 62, Noida</p>
+      </div>
+      <span class="badge b-appr">● Active</span>
+    </div>
+
+    <!-- FLOOR TOP BAR (all visible, no dropdown) -->
+    <div class="card p-3 mb-4">
+      <div class="text-[.66rem] font-bold tracking-widest text-slate-400 uppercase mb-2 px-1">Floors — tap to open</div>
+      <div class="flex gap-2 overflow-x-auto pb-1">
+        <div class="floor">Basement <small>0</small></div>
+        <div class="floor">Stilt <small>2</small></div>
+        <div class="floor floor-active">Ground <small>14</small></div>
+        <div class="floor">First <small>11</small></div>
+        <div class="floor">Second <small>9</small></div>
+        <div class="floor">Third <small>9</small></div>
+        <div class="floor">Terrace <small>3</small></div>
+      </div>
+    </div>
+
+    <!-- DEPARTMENT SHORTCUT PILLS (like the reference image) -->
+    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+      <div class="pill pill-active">Interior Design <span class="cnt">14</span></div>
+      <div class="pill">Structure <span class="cnt">6</span></div>
+      <div class="pill">MEP <span class="cnt">8</span></div>
+      <div class="pill">Woodwork <span class="cnt">5</span></div>
+    </div>
+
+    <!-- DRAWINGS LIST -->
+    <div class="card overflow-hidden">
+      <div class="flex items-center justify-between gap-3 px-5 py-4 border-b" style="border-color:#eef2f7">
+        <div>
+          <div class="font-bold text-[1.02rem]">Ground Floor · Interior Design</div>
+          <div class="text-[.8rem] text-slate-400">14 signed drawings</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="hidden md:flex items-center gap-2 bg-white border rounded-lg px-2.5 py-1.5 text-sm text-slate-400" style="border-color:var(--line)">🔍 <span>Search drawings…</span></div>
+          <div class="flex bg-slate-100 rounded-lg p-0.5 text-[.78rem] font-semibold">
+            <span class="px-2.5 py-1 rounded-md bg-white shadow-sm text-slate-800">Signed</span>
+            <span class="px-2.5 py-1 text-slate-500">All</span>
+          </div>
+        </div>
+      </div>
+      <!-- column head -->
+      <div class="grid grid-cols-[1fr_90px_140px_90px] gap-3 px-5 py-2 text-[.66rem] font-bold tracking-widest uppercase text-slate-400 bg-slate-50/70">
+        <span>Drawing</span><span>Version</span><span>Approved</span><span class="text-right">Open</span>
+      </div>
+      <div id="rows"></div>
+    </div>
+    <p class="text-center text-slate-400 text-xs mt-6">Mockup for client review · matches current Blueprint Flow theme · not final UI</p>
+  </main>
+</div>
+<script>
+const drawings=[
+ ["Furniture Layout Plan","V3","Pradeep Rawat","12 Jun"],
+ ["False Ceiling Layout","V2","Pradeep Rawat","12 Jun"],
+ ["Flooring & Finishes Plan","V2","Virender","11 Jun"],
+ ["Wall Paneling Details","V1","Pradeep Rawat","10 Jun"],
+ ["Reflected Ceiling Plan","V2","Virender","10 Jun"],
+ ["Wardrobe & Storage Details","V1","Pradeep Rawat","09 Jun"],
+ ["Door & Window Schedule","V1","Virender","09 Jun"],
+ ["Lobby Elevation","V4","Pradeep Rawat","08 Jun"],
+ ["Toilet Elevations","V2","Virender","08 Jun"],
+ ["Painting & Finish Schedule","V1","Pradeep Rawat","07 Jun"],
+];
+document.getElementById('rows').innerHTML=drawings.map((d,i)=>`
+ <div class="row grid grid-cols-[1fr_90px_140px_90px] gap-3 items-center px-5 py-3.5 ${i? 'border-t':''}" style="border-color:#f1f5f9">
+   <div class="flex items-center gap-3 min-w-0">
+     <div class="w-9 h-9 rounded-lg grid place-items-center text-slate-400 flex-shrink-0" style="background:#f1f5f9">📄</div>
+     <div class="font-semibold text-[.9rem] truncate">${d[0]}</div>
+   </div>
+   <div class="mono text-[.82rem] text-slate-500">${d[1]}</div>
+   <div><span class="badge b-appr">✓ Signed</span><div class="text-[.7rem] text-slate-400 mt-1">${d[2]} · ${d[3]}</div></div>
+   <div class="text-right"><button class="btn btn-primary">Open</button></div>
+ </div>`).join('');
+</script>
+</body>
+</html>
