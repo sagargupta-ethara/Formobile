@@ -101,6 +101,28 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-16 (v5: drawing register missing on Mongo — root cause)
+- **Symptom:** in prod, floors showed "No drawings match" / "0 of 0 drawings" for
+  every discipline; the drawing-type master register appeared empty.
+- **Root cause (Prisma + MongoDB null semantics):** the master register rows
+  (`DesignCategory` with no project) were created by the original seed WITHOUT
+  passing `projectId`, so the field is **missing** (`isSet:false`) in Mongo.
+  Prisma's `where: { projectId: null }` matches only BSON-null, NOT a missing
+  field, so `copyTemplateRegister()` and `GET /api/categories` returned 0 — the
+  register was invisible to the app even though 70 docs existed. (A fresh Prisma
+  `create({projectId:null})` DOES store BSON-null and is matchable — confirmed by
+  a direct test.) This had been broken since the Postgres→Mongo migration.
+- **Fix (`lib/bootstrap.ts`):** at startup, run a raw Mongo `update` to set
+  `projectId: null` on any `DesignCategory` where the field is missing
+  (`$exists:false`) → normalizes legacy rows so all `{projectId:null}` queries
+  match them. Then: seed the master register if still empty (idempotent, BSON-null,
+  per-item unique-collision guard) and **backfill any project that has 0 drawings**
+  via `copyTemplateRegister` (decoupled from the user/seed gate). All idempotent
+  and safe across the 2 prod replicas.
+- **Verified in preview:** master register = 70 (MEP 26 / Interior 23 / Structure
+  19 / Woodwork 2); the Test project backfilled to 70; Ground Floor UI now lists
+  all drawing types with Assign buttons. **Requires REDEPLOY for production.**
+
 ## Changelog — 2026-06-16 (v4: strip unsupported Atlas query param)
 - After the binaryTargets fix, prod surfaced the NEXT error:
   `MongoDB connection string error: timeoutms is an invalid option`. Emergent's

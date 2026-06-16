@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import type { FloorType, Role } from "@prisma/client";
 import { prisma } from "./db";
 import { drawingRegister, guessDiscipline, guessSpecialization } from "./drawingTypes";
+import { copyTemplateRegister } from "./projectRegister";
 
 // The firm's real team — kept in sync with prisma/import-team.ts. Seeded on an
 // empty database so a fresh deploy has working logins (shared password below).
@@ -42,19 +43,16 @@ const SPEC_NAMES = [
 let ran = false;
 
 /**
- * Seed the master drawing register + the firm's team ONCE, only when the
- * database has no users. Runs in-process at server startup (instrumentation),
- * so it works regardless of how Next.js was launched in production.
+ * Idempotently ensure the database has the data the app needs. Runs in-process
+ * at server startup (instrumentation), so it works regardless of how Next.js was
+ * launched. Each block is independently gated so a partially-seeded DB (e.g.
+ * users present but the drawing register missing) self-heals on the next boot.
  */
 export async function ensureSeeded(): Promise<void> {
   if (ran) return;
   ran = true;
   try {
-    const count = await prisma.user.count();
-    if (count > 0) return;
-    console.log("[bootstrap] Empty database — seeding specializations, master register and team…");
-
-    // ---- Specializations ----
+    // ---- Specializations (idempotent; needed by the register + users) ----
     const specs: Record<string, string> = {};
     for (const name of SPEC_NAMES) {
       const s = await prisma.specialization.upsert({
@@ -65,40 +63,88 @@ export async function ensureSeeded(): Promise<void> {
       specs[name] = s.id;
     }
 
+    // ---- Normalize legacy master-register rows ----
+    // On MongoDB, rows created without passing projectId have the field MISSING
+    // (isSet:false), which Prisma's `{ projectId: null }` filter does NOT match —
+    // so the master register looked empty even when rows existed. Convert any
+    // such rows to an explicit BSON null so every `{ projectId: null }` query
+    // (here, copyTemplateRegister, /api/categories) matches them. Idempotent.
+    try {
+      const res = (await prisma.$runCommandRaw({
+        update: "DesignCategory",
+        updates: [
+          { q: { projectId: { $exists: false } }, u: { $set: { projectId: null } }, multi: true },
+        ],
+      })) as { nModified?: number };
+      if (res?.nModified) console.log(`[bootstrap] Normalized ${res.nModified} legacy master-register rows.`);
+    } catch (err) {
+      console.error("[bootstrap] register normalization skipped:", err instanceof Error ? err.message : err);
+    }
+
     // ---- Master drawing register (template, projectId = null) ----
-    for (const d of drawingRegister()) {
-      const specName = guessSpecialization(d.name);
-      const existing = await prisma.designCategory.findFirst({
-        where: { projectId: null, name: d.name },
-      });
-      const data = {
-        appliesTo: d.appliesTo as unknown as FloorType[],
-        specializationId: specName ? specs[specName] ?? null : null,
-        discipline: guessDiscipline(d.name),
-      };
-      if (existing) {
-        await prisma.designCategory.update({ where: { id: existing.id }, data: { appliesTo: data.appliesTo } });
-      } else {
-        await prisma.designCategory.create({ data: { name: d.name, ...data } });
+    // Seed only when it's empty — decoupled from the user check so a DB that
+    // already has users but no register (e.g. an earlier partial seed) is fixed.
+    let masterCount = await prisma.designCategory.count({ where: { projectId: null } });
+    if (masterCount === 0) {
+      console.log("[bootstrap] Seeding master drawing register…");
+      for (const d of drawingRegister()) {
+        const specName = guessSpecialization(d.name);
+        try {
+          await prisma.designCategory.create({
+            data: {
+              name: d.name,
+              projectId: null,
+              appliesTo: d.appliesTo as unknown as FloorType[],
+              specializationId: specName ? specs[specName] ?? null : null,
+              discipline: guessDiscipline(d.name),
+            },
+          });
+        } catch (err) {
+          // ignore unique-constraint collisions (concurrent replica / re-run)
+          if (!(err instanceof Error && err.message.includes("Unique constraint"))) throw err;
+        }
+      }
+      masterCount = await prisma.designCategory.count({ where: { projectId: null } });
+      console.log(`[bootstrap] Master register seeded (${masterCount} types).`);
+    }
+
+    // Backfill any project that has no drawing register yet (independent of the
+    // master-register gate, so existing empty projects self-heal).
+    if (masterCount > 0) {
+      const projects = await prisma.project.findMany({ select: { id: true } });
+      for (const p of projects) {
+        const have = await prisma.designCategory.count({ where: { projectId: p.id } });
+        if (have === 0) {
+          try {
+            const n = await copyTemplateRegister(p.id);
+            console.log(`[bootstrap] Backfilled ${n} drawings into project ${p.id}.`);
+          } catch (err) {
+            console.error("[bootstrap] backfill skipped for", p.id, err instanceof Error ? err.message : err);
+          }
+        }
       }
     }
 
-    // ---- Team users (shared initial password) ----
-    const pw = await bcrypt.hash("password123", 10);
-    for (const t of TEAM) {
-      await prisma.user.upsert({
-        where: { email: t.email },
-        update: {},
-        create: {
-          name: t.name,
-          email: t.email,
-          role: t.role,
-          specializationId: t.spec ? specs[t.spec] ?? null : null,
-          passwordHash: pw,
-        },
-      });
+    // ---- Team users (shared initial password) — only when there are none ----
+    const userCount = await prisma.user.count();
+    if (userCount === 0) {
+      console.log("[bootstrap] Seeding team users…");
+      const pw = await bcrypt.hash("password123", 10);
+      for (const t of TEAM) {
+        await prisma.user.upsert({
+          where: { email: t.email },
+          update: {},
+          create: {
+            name: t.name,
+            email: t.email,
+            role: t.role,
+            specializationId: t.spec ? specs[t.spec] ?? null : null,
+            passwordHash: pw,
+          },
+        });
+      }
+      console.log(`[bootstrap] Seeded ${TEAM.length} users.`);
     }
-    console.log(`[bootstrap] Seed complete — ${TEAM.length} users, ${SPEC_NAMES.length} specializations.`);
   } catch (e) {
     console.error("[bootstrap] Seed failed (server will continue):", e instanceof Error ? e.message : e);
   }
