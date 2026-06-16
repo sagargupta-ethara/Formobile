@@ -92,41 +92,6 @@ function startNext() {
   });
 }
 
-function runScript(relPath) {
-  return new Promise((resolve) => {
-    const p = spawn("node", ["node_modules/.bin/tsx", relPath], {
-      cwd: "/app",
-      stdio: "inherit",
-      env: process.env,
-    });
-    p.on("exit", (code) => resolve(code ?? 0));
-    p.on("error", () => resolve(1));
-  });
-}
-
-/**
- * On a fresh production database (e.g. the first deploy against managed Atlas),
- * the collections are empty so login would have no accounts. Seed the master
- * register + real team ONCE when there are zero users. No-op everywhere that is
- * already seeded (preview, subsequent boots).
- */
-async function ensureSeed() {
-  if (!process.env.MONGO_URL) return;
-  let prisma;
-  try {
-    const { PrismaClient } = require("@prisma/client");
-    prisma = new PrismaClient();
-    const count = await prisma.user.count();
-    if (count > 0) return;
-    console.log("[bootstrap] Empty database — seeding master data + team…");
-    await runScript("prisma/seed.ts");
-    await runScript("prisma/import-team.ts");
-    console.log("[bootstrap] Seed complete.");
-  } catch (e) {
-    console.error("[bootstrap] Seed check failed (continuing to start):", e?.message || e);
-  } finally {
-    if (prisma) await prisma.$disconnect().catch(() => {});
-  }
-}
-
-ensureSeed().finally(startNext);
+// Seeding of an empty database is handled in-process by Next.js instrumentation
+// (instrumentation.ts -> lib/bootstrap.ts), so it runs regardless of launcher.
+startNext();

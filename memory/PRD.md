@@ -101,8 +101,28 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-16 (v2: launcher-independent prod fix)
+- **🔴 Production login still 500'd after v1** (curl on prod returned
+  `{"error":"Internal server error"}` while preview was 200). Real root cause:
+  Emergent injects the managed Atlas `MONGO_URL` **without a database name in the
+  path**, and Prisma's mongodb connector REQUIRES the db name → every query threw.
+  The v1 fix only merged the db name inside `start.js`, which only runs if that
+  launcher is the prod entrypoint (unverifiable).
+  **v2 fix (launcher-independent):**
+  - `lib/db.ts` now resolves the connection string itself: reads `MONGO_URL`/`DB_NAME`
+    from `process.env` (falls back to `/app/backend/.env` then `/app/.env`), folds
+    `DB_NAME` into the URL via `withDatabase()`, and passes it to `PrismaClient`
+    via `datasourceUrl`. Works no matter how Next.js is started.
+  - **In-process seeding** via Next.js `instrumentation.ts` → `lib/bootstrap.ts`:
+    on an empty DB (zero users) it seeds 8 specializations + the master drawing
+    register + the 25 team accounts (shared password `password123`). Runs once at
+    server boot regardless of launcher (no tsx dependency). Removed the tsx-based
+    seed from `start.js`.
+  Verified in preview: all 3 roles login 200; me/projects/tasks 200; 25 users present.
+  **Requires a REDEPLOY to take effect in production.**
+
 ## Changelog — 2026-06-16 (production login 500 + object storage)
-- **🔴 Fixed production login 500 ("credentials are not available").** Root cause:
+- **🔴 (v1) Production login 500 fix attempt.** Root cause initially identified:
   the Next.js process (which runs all Prisma queries) read its `MONGO_URL` from
   `/app/.env`, which is **gitignored** and therefore absent in the deployed
   container. Emergent injects managed values into `/app/backend/.env`, which
