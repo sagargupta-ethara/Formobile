@@ -19,18 +19,20 @@ All seeded users share the password: **`password123`**
 **On-Site Carpentry:** kailash
 **MEP On-Site:** dighamber (Plumbing), mahesh & sandeep (Electrical), salman (HVAC)
 
-## Database
-- Host: `localhost:5432`
-- User: `bf`  /  Password: `bfpass`  /  DB: `blueprint_flow`
-- Connection string: `postgresql://bf:bfpass@localhost:5432/blueprint_flow`
+## Database (MongoDB — migrated from PostgreSQL on 2026-06-16)
+- Engine: **MongoDB** via Prisma (`provider = "mongodb"`)
+- Preview/local: single-node replica set — `mongodb://127.0.0.1:27018/blueprint_flow?replicaSet=rs0`
+  (Prisma's Mongo connector requires a replica set; the platform standalone Mongo on 27017 is left untouched.)
+- Production: Emergent-managed Atlas MongoDB, injected via the `MONGO_URL` env var.
+- DB name: `blueprint_flow`. Configured via `MONGO_URL` in `/app/.env` and `/app/backend/.env`.
 
 ## Storage
-- Local disk at `/app/storage` (ephemeral on container restart)
+- Local disk at `/app/storage` (ephemeral on container restart; migrate to object storage for durable prod uploads).
 
-## Re-seed / re-import
+## Re-seed / re-import (MongoDB)
 ```
 cd /app
-yarn db:push                          # apply schema
-yarn db:seed                          # demo data (admin@blueprint.test etc.)
-npx tsx prisma/import-team.ts         # import real staff, remove demo data
+set -a && . ./.env && set +a          # load MONGO_URL
+npx prisma db push                    # apply schema + indexes to Mongo
+npx tsx prisma/import-team.ts         # import the 25 real staff accounts
 ```
