@@ -101,6 +101,21 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-16 (v3: THE real prod fix — Prisma engine binary)
+- **🎯 Actual production login 500 root cause found** via a temporary diagnostic
+  route (`/api/debug/db`, redacts creds): production returned
+  `PrismaClientInitializationError: Prisma Client could not locate the Query
+  Engine for runtime "debian-openssl-3.0.x" ... was generated for
+  "linux-musl-openssl-3.0.x"`. The deploy build is Alpine/musl but the runtime is
+  Debian — the bundled query engine didn't match, so EVERY Prisma query threw 500.
+  **Fix:** `prisma/schema.prisma` generator now sets
+  `binaryTargets = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]`
+  and ran `prisma generate`. Deploy's postinstall regenerates with the debian engine.
+- The diagnostic ALSO confirmed the prod env: `MONGO_URL` = `mongodb+srv://customer-apps...mongodb.net` **with no db in path**, `DB_NAME=floor-planning-stage-base`. The v2 `lib/db.ts` merge handles this correctly (folds DB_NAME into the URL; prefers `process.env` over the localhost values still sitting in the committed `.env` files).
+- Net effect after redeploy: Prisma connects to Atlas → instrumentation seeds the
+  25 accounts on the empty DB → login + quick demo logins work.
+- TODO: remove the temporary `/api/debug/db` route once prod login is confirmed green.
+
 ## Changelog — 2026-06-16 (v2: launcher-independent prod fix)
 - **🔴 Production login still 500'd after v1** (curl on prod returned
   `{"error":"Internal server error"}` while preview was 200). Real root cause:
