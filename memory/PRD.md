@@ -85,6 +85,20 @@ budget — backend coverage was 84% with the above as the only criticals.
 **Imported, running, and reachable via the preview URL.** Awaiting next user
 instruction (feature work, bug fix, or deployment hardening).
 
+## Changelog — 2026-06-16
+- **Drawing preview toolbar** added to `DrawingReviewModal` (zoom in/out + live %,
+  fit/reset, rotate, open-in-new-tab, download; wheel-zoom + drag-pan for images,
+  zoomable scroll for PDFs). Approve/Reject unchanged.
+- **Test suite refactor (code-review fixes):** new typed `backend/tests/api_helpers.py`;
+  `test_iteration2_changes.py` split the 114-line reject test into a module fixture +
+  5 tiny tests, parametrised status tests; `test_rejected_file_flow.py` reduced to small
+  linear helpers; `test_blueprint_flow.py` fixed `is None` anti-pattern and added full
+  type hints. 15 iteration-2 tests pass, standalone flow passes, 59 tests collect clean.
+- **On-site UI mockups** (web + mobile, 4 layout options A/B/C/D + preview toolbar)
+  served from `public/mockups/*.html` for client review (throwaway, no app logic).
+- ⚠️ Note: an over-broad test-data cleanup deleted all (test-only) projects; 27 team
+  accounts intact; a "Test" sandbox project was recreated.
+
 ## Client change set — 2026-06-15 (all implemented + verified)
 1. **ProjectStatus 6 → 5**: removed `DESIGN`; enum is now `PLANNING, ACTIVE,
    ON_HOLD, UPCOMING, COMPLETED`. Migrated DB (`prisma db push --accept-data-loss`,

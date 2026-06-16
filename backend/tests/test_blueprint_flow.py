@@ -3,73 +3,64 @@ Blueprint Flow — Backend API audit (Next.js routes via FastAPI proxy).
 Covers: auth, profile, projects, floors, categories, members, tasks,
 files, reviews, users, specializations, dashboard, notifications, RBAC.
 """
+from __future__ import annotations
+
 import io
-import os
 import time
+from typing import Any
+
 import pytest
 import requests
 
-BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL")
-            or "https://floor-planning-stage.preview.emergentagent.com").rstrip("/")
+from api_helpers import ADMIN, BASE_URL, DESIGNER, ONSITE, login
 
-ADMIN = ("manish.uppal@blueprintflow.in", "password123")
-DESIGNER = ("amarpreet.padam@blueprintflow.in", "password123")  # Interior
-ONSITE = ("sudama@blueprintflow.in", "password123")             # Site Supervisor
-ONSITE_ELEC = ("mahesh@blueprintflow.in", "password123")        # MEP Electrical
-
-
-def _login(email, password):
-    s = requests.Session()
-    r = s.post(f"{BASE_URL}/api/auth/login",
-               json={"email": email, "password": password}, timeout=20)
-    assert r.status_code == 200, f"login failed for {email}: {r.status_code} {r.text}"
-    return s
+ONSITE_ELEC: tuple[str, str] = ("mahesh@blueprintflow.in", "password123")  # MEP Electrical
 
 
 @pytest.fixture(scope="session")
-def admin():
-    return _login(*ADMIN)
+def admin() -> requests.Session:
+    return login(*ADMIN)
 
 
 @pytest.fixture(scope="session")
-def designer():
-    return _login(*DESIGNER)
+def designer() -> requests.Session:
+    return login(*DESIGNER)
 
 
 @pytest.fixture(scope="session")
-def onsite():
-    return _login(*ONSITE)
+def onsite() -> requests.Session:
+    return login(*ONSITE)
 
 
 @pytest.fixture(scope="session")
-def state():
+def state() -> dict[str, Any]:
     return {}
 
 
 # ---------- AUTH ----------
 class TestAuth:
-    def test_me_anonymous(self):
+    def test_me_anonymous(self) -> None:
         r = requests.get(f"{BASE_URL}/api/auth/me", timeout=15)
         assert r.status_code == 200
-        assert r.json().get("user") is None
+        assert not r.json().get("user")
 
-    def test_login_bad(self):
+    def test_login_bad(self) -> None:
         r = requests.post(f"{BASE_URL}/api/auth/login",
                           json={"email": ADMIN[0], "password": "wrong"}, timeout=15)
         assert r.status_code in (400, 401, 403)
 
-    def test_admin_login_me(self, admin):
+    def test_admin_login_me(self, admin: requests.Session) -> None:
         r = admin.get(f"{BASE_URL}/api/auth/me", timeout=15)
         assert r.status_code == 200
         u = r.json()["user"]
         assert u["role"] == "ADMIN"
         assert u["email"] == ADMIN[0]
 
-    def test_designer_login(self, designer):
+    def test_designer_login(self, designer: requests.Session) -> None:
         u = designer.get(f"{BASE_URL}/api/auth/me", timeout=15).json()["user"]
         assert u["role"] == "DESIGNER"
 
-    def test_onsite_login(self, onsite):
+    def test_onsite_login(self, onsite: requests.Session) -> None:
         u = onsite.get(f"{BASE_URL}/api/auth/me", timeout=15).json()["user"]
         assert u["role"] == "ONSITE"
         # specialization should be present for onsite users
@@ -78,13 +69,13 @@ class TestAuth:
 
 # ---------- PROFILE ----------
 class TestProfile:
-    def test_profile_get(self, admin):
+    def test_profile_get(self, admin: requests.Session) -> None:
         r = admin.get(f"{BASE_URL}/api/profile", timeout=15)
         assert r.status_code == 200, r.text
         d = r.json()
         assert d.get("email") == ADMIN[0] or d.get("user", {}).get("email") == ADMIN[0]
 
-    def test_profile_update_phone(self, admin):
+    def test_profile_update_phone(self, admin: requests.Session) -> None:
         # Try common shapes
         r = admin.patch(f"{BASE_URL}/api/profile",
                         json={"name": "Manish Uppal", "phone": "9999999999"}, timeout=15)
@@ -93,7 +84,7 @@ class TestProfile:
                           json={"name": "Manish Uppal", "phone": "9999999999"}, timeout=15)
         assert r.status_code in (200, 204), f"{r.status_code} {r.text}"
 
-    def test_password_change_wrong_current(self, admin):
+    def test_password_change_wrong_current(self, admin: requests.Session) -> None:
         # Find password endpoint
         for path in ("/api/profile/password", "/api/profile"):
             r = admin.post(f"{BASE_URL}{path}",
@@ -106,7 +97,7 @@ class TestProfile:
 
 # ---------- SPECIALIZATIONS ----------
 class TestSpecializations:
-    def test_list(self, admin, state):
+    def test_list(self, admin: requests.Session, state: dict[str, Any]) -> None:
         r = admin.get(f"{BASE_URL}/api/specializations", timeout=15)
         assert r.status_code == 200, r.text
         data = r.json()
@@ -114,7 +105,7 @@ class TestSpecializations:
         assert len(items) > 0
         state["specs"] = items
 
-    def test_create_rename_delete(self, admin, state):
+    def test_create_rename_delete(self, admin: requests.Session, state: dict[str, Any]) -> None:
         name = f"TEST_Spec_{int(time.time())}"
         r = admin.post(f"{BASE_URL}/api/specializations", json={"name": name}, timeout=15)
         assert r.status_code in (200, 201), r.text
@@ -133,7 +124,7 @@ class TestSpecializations:
 
 # ---------- USERS ----------
 class TestUsers:
-    def test_list_users(self, admin, state):
+    def test_list_users(self, admin: requests.Session, state: dict[str, Any]) -> None:
         r = admin.get(f"{BASE_URL}/api/users", timeout=15)
         assert r.status_code == 200
         data = r.json()
@@ -147,11 +138,11 @@ class TestUsers:
             if u.get("email") == ONSITE[0]:
                 state["onsite_id"] = u["id"]
 
-    def test_designer_cannot_list_users(self, designer):
+    def test_designer_cannot_list_users(self, designer: requests.Session) -> None:
         r = designer.get(f"{BASE_URL}/api/users", timeout=15)
         assert r.status_code in (401, 403), f"designer should not list users: {r.status_code}"
 
-    def test_create_update_deactivate(self, admin, state):
+    def test_create_update_deactivate(self, admin: requests.Session, state: dict[str, Any]) -> None:
         spec_id = state["specs"][0].get("id")
         email = f"test_user_{int(time.time())}@blueprintflow.in"
         r = admin.post(f"{BASE_URL}/api/users", json={
@@ -180,11 +171,11 @@ class TestUsers:
 
 # ---------- PROJECTS ----------
 class TestProjects:
-    def test_list_projects(self, admin):
+    def test_list_projects(self, admin: requests.Session) -> None:
         r = admin.get(f"{BASE_URL}/api/projects", timeout=15)
         assert r.status_code == 200, r.text
 
-    def test_create_project(self, admin, state):
+    def test_create_project(self, admin: requests.Session, state: dict[str, Any]) -> None:
         ts = int(time.time())
         body = {
             "name": f"TEST Project {ts}",
@@ -199,18 +190,18 @@ class TestProjects:
         assert pid
         state["project_id"] = pid
 
-    def test_get_project(self, admin, state):
+    def test_get_project(self, admin: requests.Session, state: dict[str, Any]) -> None:
         pid = state["project_id"]
         r = admin.get(f"{BASE_URL}/api/projects/{pid}", timeout=15)
         assert r.status_code == 200, r.text
 
-    def test_designer_cannot_create_project(self, designer):
+    def test_designer_cannot_create_project(self, designer: requests.Session) -> None:
         r = designer.post(f"{BASE_URL}/api/projects", json={
             "name": "X", "code": "X1", "client": "x", "location": "x"
         }, timeout=15)
         assert r.status_code in (401, 403)
 
-    def test_add_floors(self, admin, state):
+    def test_add_floors(self, admin: requests.Session, state: dict[str, Any]) -> None:
         pid = state["project_id"]
         floors = [
             {"floorName": "B1", "floorType": "BASEMENT"},
@@ -230,7 +221,7 @@ class TestProjects:
         floor_match = next((f for f in flist if (f.get("floorType") or f.get("type")) == "FLOOR"), flist[0])
         state["floor_id"] = floor_match.get("id")
 
-    def test_add_remove_member(self, admin, state):
+    def test_add_remove_member(self, admin: requests.Session, state: dict[str, Any]) -> None:
         pid = state["project_id"]
         did = state["designer_id"]
         r = admin.post(f"{BASE_URL}/api/projects/{pid}/members",
@@ -253,11 +244,11 @@ class TestProjects:
 
 # ---------- CATEGORIES (Drawing register) ----------
 class TestCategories:
-    def test_list(self, admin):
+    def test_list(self, admin: requests.Session) -> None:
         r = admin.get(f"{BASE_URL}/api/categories", timeout=15)
         assert r.status_code == 200
 
-    def test_crud(self, admin, state):
+    def test_crud(self, admin: requests.Session, state: dict[str, Any]) -> None:
         ts = int(time.time())
         spec_id = state["specs"][0].get("id")
         pid = state["project_id"]
@@ -291,7 +282,7 @@ class TestCategories:
 
 # ---------- TASKS ----------
 class TestTasks:
-    def test_assign_task(self, admin, state):
+    def test_assign_task(self, admin: requests.Session, state: dict[str, Any]) -> None:
         pid = state["project_id"]
         body = {
             "projectId": pid,
@@ -310,7 +301,7 @@ class TestTasks:
         assert tid
         state["task_id"] = tid
 
-    def test_admin_lists_tasks(self, admin, state):
+    def test_admin_lists_tasks(self, admin: requests.Session, state: dict[str, Any]) -> None:
         r = admin.get(f"{BASE_URL}/api/tasks", timeout=15)
         assert r.status_code == 200
         data = r.json()
@@ -318,7 +309,7 @@ class TestTasks:
         ids = [t.get("id") for t in items]
         assert state["task_id"] in ids
 
-    def test_designer_sees_assigned_task(self, designer, state):
+    def test_designer_sees_assigned_task(self, designer: requests.Session, state: dict[str, Any]) -> None:
         r = designer.get(f"{BASE_URL}/api/tasks", timeout=15)
         assert r.status_code == 200
         data = r.json()
@@ -326,7 +317,7 @@ class TestTasks:
         ids = [t.get("id") for t in items]
         assert state["task_id"] in ids, "designer must see their assigned task"
 
-    def test_onsite_cannot_see_assigned_yet(self, onsite, state):
+    def test_onsite_cannot_see_assigned_yet(self, onsite: requests.Session, state: dict[str, Any]) -> None:
         r = onsite.get(f"{BASE_URL}/api/tasks", timeout=15)
         assert r.status_code == 200
         data = r.json()
@@ -334,7 +325,7 @@ class TestTasks:
         ids = [t.get("id") for t in items]
         assert state["task_id"] not in ids, "onsite must NOT see ASSIGNED task"
 
-    def test_task_edit(self, admin, state):
+    def test_task_edit(self, admin: requests.Session, state: dict[str, Any]) -> None:
         tid = state["task_id"]
         r = admin.patch(f"{BASE_URL}/api/tasks/{tid}",
                        json={"priority": "MEDIUM"}, timeout=15)
@@ -343,7 +334,7 @@ class TestTasks:
                          json={"priority": "MEDIUM"}, timeout=15)
         assert r.status_code in (200, 204), r.text
 
-    def test_designer_upload(self, designer, state):
+    def test_designer_upload(self, designer: requests.Session, state: dict[str, Any]) -> None:
         tid = state["task_id"]
         files = {"file": ("design.pdf", io.BytesIO(b"%PDF-1.4 fake pdf"), "application/pdf")}
         r = designer.post(f"{BASE_URL}/api/tasks/{tid}/files", files=files, timeout=30)
@@ -359,7 +350,7 @@ class TestTasks:
         status = t.get("status")
         assert status in ("PENDING_REVIEW", "IN_REVIEW", "SUBMITTED"), f"status after upload: {status}"
 
-    def test_onsite_sees_pending_review(self, onsite, state):
+    def test_onsite_sees_pending_review(self, onsite: requests.Session, state: dict[str, Any]) -> None:
         r = onsite.get(f"{BASE_URL}/api/tasks", timeout=15)
         assert r.status_code == 200
         data = r.json()
@@ -370,28 +361,28 @@ class TestTasks:
 
 # ---------- REVIEWS & RBAC ----------
 class TestReviewsAndRBAC:
-    def test_onsite_reject(self, onsite, state):
+    def test_onsite_reject(self, onsite: requests.Session, state: dict[str, Any]) -> None:
         tid = state["task_id"]
         body = {"decision": "REJECTED", "action": "REJECT",
                 "comment": "needs revision - missing dimensions"}
         r = onsite.post(f"{BASE_URL}/api/tasks/{tid}/reviews", json=body, timeout=20)
         assert r.status_code in (200, 201), f"reject: {r.status_code} {r.text}"
 
-    def test_rbac_rejected_file_blocked(self, onsite, state):
+    def test_rbac_rejected_file_blocked(self, onsite: requests.Session, state: dict[str, Any]) -> None:
         # After rejection the file from v1 should be hidden from onsite per lib/access.ts
         fid = state["file_id_v1"]
         r = onsite.get(f"{BASE_URL}/api/files/{fid}", timeout=15)
         assert r.status_code in (403, 404), (
             f"REJECTED previous version must be hidden from onsite; got {r.status_code}")
 
-    def test_designer_uploads_revision(self, designer, state):
+    def test_designer_uploads_revision(self, designer: requests.Session, state: dict[str, Any]) -> None:
         tid = state["task_id"]
         files = {"file": ("revision.pdf", io.BytesIO(b"%PDF-1.4 revised"), "application/pdf")}
         r = designer.post(f"{BASE_URL}/api/tasks/{tid}/files", files=files, timeout=30)
         assert r.status_code in (200, 201), f"revision upload: {r.status_code} {r.text}"
         state["file_id_v2"] = r.json().get("id") or r.json().get("file", {}).get("id")
 
-    def test_onsite_approve(self, onsite, state):
+    def test_onsite_approve(self, onsite: requests.Session, state: dict[str, Any]) -> None:
         tid = state["task_id"]
         body = {"decision": "APPROVED", "action": "APPROVE", "comment": "ok"}
         r = onsite.post(f"{BASE_URL}/api/tasks/{tid}/reviews", json=body, timeout=20)
@@ -400,19 +391,19 @@ class TestReviewsAndRBAC:
 
 # ---------- DASHBOARD & MISC ----------
 class TestMisc:
-    def test_dashboard_admin(self, admin):
+    def test_dashboard_admin(self, admin: requests.Session) -> None:
         r = admin.get(f"{BASE_URL}/api/dashboard", timeout=15)
         assert r.status_code == 200, r.text
 
-    def test_dashboard_designer(self, designer):
+    def test_dashboard_designer(self, designer: requests.Session) -> None:
         r = designer.get(f"{BASE_URL}/api/dashboard", timeout=15)
         assert r.status_code == 200
 
-    def test_dashboard_onsite(self, onsite):
+    def test_dashboard_onsite(self, onsite: requests.Session) -> None:
         r = onsite.get(f"{BASE_URL}/api/dashboard", timeout=15)
         assert r.status_code == 200
 
-    def test_notifications(self, admin):
+    def test_notifications(self, admin: requests.Session) -> None:
         r = admin.get(f"{BASE_URL}/api/notifications", timeout=15)
         assert r.status_code == 200
 
@@ -424,6 +415,6 @@ class TestAnonBlocked:
         "/api/profile", "/api/dashboard", "/api/notifications",
         "/api/categories", "/api/specializations",
     ])
-    def test_anon_blocked(self, path):
+    def test_anon_blocked(self, path: str) -> None:
         r = requests.get(f"{BASE_URL}{path}", timeout=15)
         assert r.status_code in (401, 403), f"{path} accessible without auth: {r.status_code}"
