@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>On-Site · Concept 2 — Big Card Queue</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  body{font-family:'IBM Plex Sans',sans-serif;background:#27272a;background-image:radial-gradient(#3f3f46 1px,transparent 1px);background-size:22px 22px;}
+  .disp{font-family:'Cabinet Grotesk','IBM Plex Sans',sans-serif;}
+  .phone{width:390px;background:#FAFAFA;border-radius:42px;box-shadow:0 30px 60px rgba(0,0,0,.45);border:10px solid #18181b;overflow:hidden;position:relative;}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:26px;background:#18181b;border-radius:0 0 18px 18px;z-index:30;}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
+  .pulse{animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .blink{animation:blink 1.2s ease-in-out infinite;}
+  .sheet{box-shadow:0 -20px 40px rgba(0,0,0,.18);}
+</style>
+</head>
+<body class="p-10">
+  <div class="max-w-[1300px] mx-auto">
+    <div class="text-center mb-8">
+      <div class="inline-block bg-[#FFD600] text-black disp font-black text-sm px-4 py-1.5 rounded-full tracking-wide mb-3">CONCEPT 2</div>
+      <h1 class="disp text-white font-black text-4xl tracking-tight">“Big Card” Review List</h1>
+      <p class="text-zinc-400 text-lg mt-2 max-w-2xl mx-auto">A short list of huge cards — the worker can see how much is left. Tapping a card slides up a sheet that lives in the easy-to-reach thumb zone.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-10 justify-center items-start">
+
+      <!-- SCREEN 1: queue -->
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="h-[760px] flex flex-col">
+            <div class="px-6 pt-10 pb-3">
+              <div class="text-[11px] disp font-black tracking-widest text-zinc-500">GOOD MORNING, SUDAMA</div>
+              <div class="disp font-black text-3xl text-zinc-900 leading-tight">To Check Today</div>
+              <div class="mt-2 inline-flex items-center gap-2 bg-[#FFD600] text-black px-3 py-1 rounded-full disp font-black text-sm"><span class="w-2.5 h-2.5 rounded-full bg-black blink"></span> 3 DRAWINGS WAITING</div>
+            </div>
+            <div class="flex-1 overflow-hidden px-5 space-y-4 mt-1">
+              <!-- card -->
+              <div class="bg-white border-2 border-zinc-200 rounded-2xl p-4 flex items-center gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=200&q=70&ixlib=rb-4.1.0" class="w-20 h-20 rounded-xl object-cover border border-zinc-200"/>
+                <div class="flex-1 min-w-0">
+                  <div class="disp font-black text-xl text-zinc-900 leading-tight">Ground Floor</div>
+                  <div class="text-zinc-500 font-semibold">Plumbing layout</div>
+                  <div class="mt-1.5 inline-flex items-center gap-1.5 text-amber-600 font-bold text-sm"><span class="w-2 h-2 rounded-full bg-amber-500 blink"></span> Review pending</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-8 h-8 text-zinc-400"></i>
+              </div>
+              <div class="bg-white border-2 border-zinc-200 rounded-2xl p-4 flex items-center gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+                <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=200&q=70&ixlib=rb-4.1.0" class="w-20 h-20 rounded-xl object-cover border border-zinc-200"/>
+                <div class="flex-1 min-w-0">
+                  <div class="disp font-black text-xl text-zinc-900 leading-tight">2nd Floor</div>
+                  <div class="text-zinc-500 font-semibold">Electrical points</div>
+                  <div class="mt-1.5 inline-flex items-center gap-1.5 text-amber-600 font-bold text-sm"><span class="w-2 h-2 rounded-full bg-amber-500 blink"></span> Review pending</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-8 h-8 text-zinc-400"></i>
+              </div>
+              <div class="bg-white border-2 border-zinc-200 rounded-2xl p-4 flex items-center gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] opacity-90">
+                <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=200&q=70&ixlib=rb-4.1.0" class="w-20 h-20 rounded-xl object-cover border border-zinc-200"/>
+                <div class="flex-1 min-w-0">
+                  <div class="disp font-black text-xl text-zinc-900 leading-tight">Stilt Floor</div>
+                  <div class="text-zinc-500 font-semibold">Parking layout</div>
+                  <div class="mt-1.5 inline-flex items-center gap-1.5 text-amber-600 font-bold text-sm"><span class="w-2 h-2 rounded-full bg-amber-500 blink"></span> Review pending</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-8 h-8 text-zinc-400"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-zinc-400 mt-4 disp font-bold tracking-wide">STEP 1 · Big tappable cards</p>
+      </div>
+
+      <!-- SCREEN 2: bottom sheet -->
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="h-[760px] flex flex-col bg-zinc-900 relative">
+            <!-- dimmed list behind -->
+            <div class="absolute inset-0 opacity-30 blur-[1px]">
+              <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=600&q=70&ixlib=rb-4.1.0" class="w-full h-full object-cover"/>
+            </div>
+            <!-- sheet -->
+            <div class="sheet mt-auto bg-[#FAFAFA] rounded-t-[34px] relative z-10 flex flex-col" style="height:90%">
+              <div class="w-12 h-1.5 bg-zinc-300 rounded-full mx-auto mt-3"></div>
+              <div class="px-6 pt-3">
+                <div class="disp font-black text-2xl text-zinc-900">Ground Floor</div>
+                <div class="text-zinc-500 font-semibold -mt-0.5">Plumbing layout · V1</div>
+              </div>
+              <div class="flex-1 mx-5 mt-3 rounded-2xl overflow-hidden border-2 border-zinc-200">
+                <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=600&q=80&ixlib=rb-4.1.0" class="w-full h-full object-cover"/>
+              </div>
+              <div class="p-5 pb-9 grid grid-cols-2 gap-3">
+                <button class="min-h-[88px] rounded-2xl bg-[#16A34A] text-white disp font-black text-xl flex flex-col items-center justify-center gap-1 shadow-[0_8px_24px_rgba(22,163,74,.35)] active:scale-95 transition">
+                  <i data-lucide="check" class="w-9 h-9" stroke-width="3.5"></i> APPROVE
+                </button>
+                <button class="min-h-[88px] rounded-2xl bg-[#DC2626] text-white disp font-black text-xl flex flex-col items-center justify-center gap-1 shadow-[0_8px_24px_rgba(220,38,38,.35)] active:scale-95 transition">
+                  <i data-lucide="x" class="w-9 h-9" stroke-width="3.5"></i> REJECT
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-zinc-400 mt-4 disp font-bold tracking-wide">STEP 2 · Drawing + buttons in thumb zone</p>
+      </div>
+
+      <!-- SCREEN 3: voice in sheet -->
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="h-[760px] flex flex-col bg-zinc-900 relative">
+            <div class="absolute inset-0 opacity-25 blur-[1px]">
+              <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=600&q=70&ixlib=rb-4.1.0" class="w-full h-full object-cover"/>
+            </div>
+            <div class="sheet mt-auto bg-[#FEF2F2] rounded-t-[34px] relative z-10 flex flex-col" style="height:72%">
+              <div class="w-12 h-1.5 bg-red-200 rounded-full mx-auto mt-3"></div>
+              <div class="px-6 pt-3 disp font-black text-2xl text-red-700">Tell us what’s wrong</div>
+              <div class="flex-1 flex flex-col items-center justify-center">
+                <div class="relative grid place-items-center">
+                  <span class="absolute w-36 h-36 rounded-full bg-red-200"></span>
+                  <button class="pulse relative w-32 h-32 rounded-full bg-[#DC2626] text-white grid place-items-center shadow-[0_12px_36px_rgba(220,38,38,.5)]">
+                    <i data-lucide="mic" class="w-14 h-14" stroke-width="2.5"></i>
+                  </button>
+                </div>
+                <div class="mt-5 disp font-black text-xl text-zinc-900">Recording… 0:04</div>
+                <div class="mt-2 flex items-end gap-1 h-8">
+                  <span class="w-1.5 bg-red-400 rounded-full" style="height:40%"></span>
+                  <span class="w-1.5 bg-red-500 rounded-full" style="height:90%"></span>
+                  <span class="w-1.5 bg-red-400 rounded-full" style="height:60%"></span>
+                  <span class="w-1.5 bg-red-500 rounded-full" style="height:100%"></span>
+                  <span class="w-1.5 bg-red-400 rounded-full" style="height:50%"></span>
+                  <span class="w-1.5 bg-red-500 rounded-full" style="height:80%"></span>
+                  <span class="w-1.5 bg-red-400 rounded-full" style="height:35%"></span>
+                </div>
+              </div>
+              <div class="p-5 pb-9 flex gap-3">
+                <button class="w-16 min-h-[70px] rounded-2xl bg-white border-2 border-zinc-300 grid place-items-center"><i data-lucide="camera" class="w-7 h-7"></i></button>
+                <button class="flex-1 min-h-[70px] rounded-2xl bg-zinc-900 text-white disp font-black text-xl">SEND BACK</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-zinc-400 mt-4 disp font-bold tracking-wide">STEP 3 · Voice note instead of typing</p>
+      </div>
+
+    </div>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

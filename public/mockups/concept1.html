@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>On-Site · Concept 1 — One Task At A Time</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  body{font-family:'IBM Plex Sans',sans-serif;background:#27272a;background-image:radial-gradient(#3f3f46 1px,transparent 1px);background-size:22px 22px;}
+  .disp{font-family:'Cabinet Grotesk','IBM Plex Sans',sans-serif;}
+  .phone{width:390px;background:#FAFAFA;border-radius:42px;box-shadow:0 30px 60px rgba(0,0,0,.45);border:10px solid #18181b;overflow:hidden;position:relative;}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:26px;background:#18181b;border-radius:0 0 18px 18px;z-index:30;}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
+  .pulse{animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes ring{0%{transform:scale(.8);opacity:.7}100%{transform:scale(1.8);opacity:0}}
+  .ring{animation:ring 1.6s ease-out infinite;}
+</style>
+</head>
+<body class="p-10">
+  <div class="max-w-[1300px] mx-auto">
+    <div class="text-center mb-8">
+      <div class="inline-block bg-[#FFD600] text-black disp font-black text-sm px-4 py-1.5 rounded-full tracking-wide mb-3">CONCEPT 1</div>
+      <h1 class="disp text-white font-black text-4xl tracking-tight">“One Drawing at a Time” Wizard</h1>
+      <p class="text-zinc-400 text-lg mt-2 max-w-2xl mx-auto">No menus, no lists. The worker only ever sees the <b>next</b> drawing. One big decision per screen — built for gloved hands &amp; bright sunlight.</p>
+    </div>
+
+    <div class="flex flex-wrap gap-10 justify-center items-start">
+
+      <!-- SCREEN 1: preview -->
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="h-[760px] flex flex-col">
+            <!-- top bar -->
+            <div class="px-6 pt-9 pb-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img src="https://images.unsplash.com/photo-1672748341520-6a839e6c05bb?crop=entropy&cs=srgb&fm=jpg&w=120&q=70&ixlib=rb-4.1.0" class="w-11 h-11 rounded-full object-cover border-2 border-zinc-200"/>
+                <div>
+                  <div class="text-[11px] disp font-black tracking-widest text-zinc-500">SUDAMA · SITE</div>
+                  <div class="text-lg font-bold text-zinc-900 leading-tight">1 drawing to check</div>
+                </div>
+              </div>
+              <div class="w-11 h-11 rounded-full bg-[#FFD600] grid place-items-center"><i data-lucide="bell" class="w-5 h-5"></i></div>
+            </div>
+            <!-- drawing -->
+            <div class="flex-1 mx-5 rounded-2xl overflow-hidden border-2 border-zinc-200 relative">
+              <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=600&q=80&ixlib=rb-4.1.0" class="w-full h-full object-cover"/>
+              <div class="absolute top-4 left-4 bg-black/80 text-white px-3 py-1.5 rounded-lg disp font-bold text-sm">Ground Floor · Plumbing</div>
+            </div>
+            <!-- action -->
+            <div class="p-6 pb-9">
+              <button class="w-full min-h-[76px] rounded-2xl bg-zinc-900 text-white disp font-black text-2xl flex items-center justify-center gap-3 active:scale-95 transition">
+                <i data-lucide="maximize" class="w-7 h-7"></i> OPEN DRAWING
+              </button>
+              <p class="text-center text-zinc-500 text-base mt-3 font-medium">Tap to see the full drawing</p>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-zinc-400 mt-4 disp font-bold tracking-wide">STEP 1 · See what’s next</p>
+      </div>
+
+      <!-- SCREEN 2: decide -->
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="h-[760px] flex flex-col">
+            <div class="h-[42%] relative">
+              <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=600&q=80&ixlib=rb-4.1.0" class="w-full h-full object-cover"/>
+              <div class="absolute top-9 left-4 bg-black/80 text-white px-3 py-1.5 rounded-lg disp font-bold text-sm">Ground Floor · Plumbing</div>
+              <div class="absolute bottom-3 right-4 bg-white/90 px-3 py-1 rounded-lg text-sm font-bold text-zinc-700">Drawing V1</div>
+            </div>
+            <div class="flex-1 p-6 flex flex-col justify-center gap-5">
+              <div class="text-center disp font-black text-2xl text-zinc-900 mb-1">Is this drawing OK?</div>
+              <button class="w-full min-h-[110px] rounded-3xl bg-[#16A34A] text-white disp font-black text-3xl flex items-center justify-center gap-4 shadow-[0_10px_30px_rgba(22,163,74,.4)] active:scale-95 transition">
+                <i data-lucide="check" class="w-12 h-12" stroke-width="3.5"></i> APPROVE
+              </button>
+              <button class="w-full min-h-[110px] rounded-3xl bg-[#DC2626] text-white disp font-black text-3xl flex items-center justify-center gap-4 shadow-[0_10px_30px_rgba(220,38,38,.4)] active:scale-95 transition">
+                <i data-lucide="x" class="w-12 h-12" stroke-width="3.5"></i> REJECT
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-zinc-400 mt-4 disp font-bold tracking-wide">STEP 2 · One tap to decide</p>
+      </div>
+
+      <!-- SCREEN 3: voice reject -->
+      <div>
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="h-[760px] flex flex-col bg-[#FEF2F2]">
+            <div class="px-6 pt-10 pb-2 flex items-center gap-3">
+              <div class="w-11 h-11 rounded-full bg-white border-2 border-red-200 grid place-items-center"><i data-lucide="arrow-left" class="w-5 h-5 text-red-600"></i></div>
+              <div class="disp font-black text-xl text-red-700">Why is it wrong?</div>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center px-6">
+              <div class="relative grid place-items-center mb-8">
+                <span class="ring absolute w-44 h-44 rounded-full bg-red-400"></span>
+                <span class="ring absolute w-44 h-44 rounded-full bg-red-400" style="animation-delay:.6s"></span>
+                <button class="pulse relative w-40 h-40 rounded-full bg-[#DC2626] text-white grid place-items-center shadow-[0_12px_36px_rgba(220,38,38,.5)]">
+                  <i data-lucide="mic" class="w-16 h-16" stroke-width="2.5"></i>
+                </button>
+              </div>
+              <div class="disp font-black text-2xl text-zinc-900">Hold &amp; speak</div>
+              <p class="text-zinc-500 text-base mt-1 text-center font-medium">Just say what’s wrong.<br/>No typing needed.</p>
+              <button class="mt-8 w-full min-h-[68px] rounded-2xl bg-white border-2 border-zinc-300 text-zinc-800 disp font-bold text-xl flex items-center justify-center gap-3">
+                <i data-lucide="camera" class="w-7 h-7"></i> Add a Photo
+              </button>
+            </div>
+            <div class="p-6 pb-9">
+              <button class="w-full min-h-[76px] rounded-2xl bg-zinc-900 text-white disp font-black text-2xl flex items-center justify-center gap-3 opacity-50">
+                SEND BACK
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="text-center text-zinc-400 mt-4 disp font-bold tracking-wide">STEP 3 · Speak the reason (no keyboard)</p>
+      </div>
+
+    </div>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
