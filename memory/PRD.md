@@ -86,20 +86,20 @@ budget — backend coverage was 84% with the above as the only criticals.
 instruction (feature work, bug fix, or deployment hardening).
 
 ## Changelog — 2026-06-16
-- **🔁 Migrated database PostgreSQL → MongoDB** (deployment requirement: Emergent
-  production provides Atlas MongoDB only). Kept Prisma: `provider = "mongodb"`,
-  `url = env("MONGO_URL")`; all ids are `String @id @default(cuid()) @map("_id")`
-  so foreign keys stay plain strings (minimal query churn). Created `backend/.env`
-  (fixes the original `read env file backend/.env` deploy error) and switched
-  `/app/.env` from `DATABASE_URL` to `MONGO_URL`. Preview runs a single-node Mongo
-  replica set on :27018 (Prisma's Mongo connector needs a replica set; prod Atlas
-  already is one). Re-seeded 25 team members, 8 specializations, 70 master drawing
-  categories. **All tests pass on Mongo: 44 audit + 15 iteration-2 + 5 reject-flow.**
-  Deployment agent: PASS. Post-deploy notes: run `prisma db push` against Atlas to
-  create unique indexes; disk uploads (`/app/storage`) are ephemeral → move to
-  object storage for durable prod files.
-- Drawing preview toolbar (zoom/pan/rotate/fit/open/download) in `DrawingReviewModal`.
-- Test suite refactor (typed `api_helpers.py`, complexity reduced, `is None` fixed).
+- **🛠 Preview login fix (Mongo persistence):** a container restart wiped the
+  ephemeral `/data/db-rs` holding the preview's Mongo replica set, so logins 500'd.
+  Moved RS data to the persistent `/app/.platform/mongo-rs-data` volume and added a
+  self-initializing startup script (`/app/.platform/start-mongo-rs.sh`, wired via
+  `mongodb-rs.conf`) that recreates the dir + re-initiates the replica set on every
+  boot. Re-seeded 25 members / 8 specs / 70 categories + Test sandbox. Verified data
+  and login survive a restart. (Production unaffected — uses Atlas via MONGO_URL.)
+- **Deploy env files:** created `backend/.env` and `frontend/.env` so the pipeline's
+  read-env steps pass; `test_credentials.md` added to `.gitignore`.
+- **🔁 Migrated database PostgreSQL → MongoDB.** Prisma `provider = "mongodb"`,
+  `url = env("MONGO_URL")`; ids `String @id @default(cuid()) @map("_id")` (FKs stay
+  plain strings). All tests pass on Mongo (44 audit + 15 iteration-2 + 5 reject-flow).
+  Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
+  uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
 ## Client change set — 2026-06-15 (all implemented + verified)
 1. **ProjectStatus 6 → 5**: removed `DESIGN`; enum is now `PLANNING, ACTIVE,
