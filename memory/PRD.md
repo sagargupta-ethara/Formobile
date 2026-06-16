@@ -101,6 +101,32 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-16 (production login 500 + object storage)
+- **🔴 Fixed production login 500 ("credentials are not available").** Root cause:
+  the Next.js process (which runs all Prisma queries) read its `MONGO_URL` from
+  `/app/.env`, which is **gitignored** and therefore absent in the deployed
+  container. Emergent injects managed values into `/app/backend/.env`, which
+  Next.js never read. Fix = new launcher **`/app/frontend/start.js`** (now the
+  `frontend` supervisor command via `frontend/package.json` `start`) that:
+  1) loads env from `/app/backend/.env` (falls back to `/app/.env`),
+  2) folds `DB_NAME` into the Mongo connection string (Prisma's mongodb connector
+     requires the db name in the URL; Emergent's Atlas `MONGO_URL` often omits it),
+  3) on an **empty** database only, auto-seeds master data + the 25-person team
+     (`prisma/seed.ts` then `prisma/import-team.ts`) so a fresh prod deploy has
+     working credentials, then 4) execs `next start`.
+  Added `JWT_SECRET` + `STORAGE_DIR` to `backend/.env` so prod has a stable secret.
+  Verified in preview: login/me/projects all 200; seed correctly skipped (DB not empty).
+- **📦 File uploads → hybrid storage (`lib/storage.ts`).** Uses **Emergent Object
+  Storage** when `EMERGENT_LLM_KEY` is present (durable in prod), else falls back
+  to local disk under `STORAGE_DIR` (preview/dev — unchanged behaviour). Object
+  keys are prefixed `blueprint-flow/` so `readFile()` routes each key to the right
+  backend (legacy/seed files on disk keep working). Same public signatures
+  (`saveFile`/`readFile`/`saveAvatar`) — no call-site changes. **ACTION REQUIRED:**
+  object storage stays dormant until the user enables the Universal Key
+  (Profile → Universal Key → Add Balance); `emergent_integrations_manager`
+  currently returns 404 (key not provisioned for this job).
+- Build passes (`yarn build`), no TS errors.
+
 ## Client change set — 2026-06-15 (all implemented + verified)
 1. **ProjectStatus 6 → 5**: removed `DESIGN`; enum is now `PLANNING, ACTIVE,
    ON_HOLD, UPCOMING, COMPLETED`. Migrated DB (`prisma db push --accept-data-loss`,
