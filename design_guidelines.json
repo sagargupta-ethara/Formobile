@@ -1,0 +1,125 @@
+{
+  "theme": "Light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast)",
+  "context": "Mobile Web App for Field Workers (Construction/On-Site)",
+  "design_philosophy": "Brutalist Utility. Optimize for bright sunlight, dirty hands, limited literacy, and cognitive fatigue. OAPS (One Action Per Screen).",
+  "typography": {
+    "heading_font": "Cabinet Grotesk",
+    "body_font": "IBM Plex Sans",
+    "scale": {
+      "h1": "text-4xl font-black tracking-tighter",
+      "h2": "text-2xl font-bold tracking-tight",
+      "h3": "text-xl font-bold",
+      "body": "text-lg leading-snug font-medium",
+      "labels": "text-sm font-black uppercase tracking-[0.1em] text-zinc-500"
+    }
+  },
+  "colors": {
+    "background": "#FAFAFA",
+    "surface": "#FFFFFF",
+    "text_primary": "#09090B",
+    "text_secondary": "#52525B",
+    "borders": "#E4E4E7",
+    "brand_accent": "#FFD600",
+    "success_approve": "#16A34A",
+    "success_approve_hover": "#15803D",
+    "danger_reject": "#DC2626",
+    "danger_reject_hover": "#B91C1C",
+    "button_text": "#FFFFFF"
+  },
+  "spacing_and_layout": {
+    "container": "max-w-[390px] mx-auto w-full min-h-screen bg-[#FAFAFA] relative shadow-2xl overflow-hidden",
+    "global_padding": "p-6",
+    "touch_targets": "min-h-[72px] w-full",
+    "button_radius": "rounded-xl",
+    "card_radius": "rounded-2xl"
+  },
+  "visual_enhancers": {
+    "shadows": "shadow-[0_8px_30px_rgb(0,0,0,0.08)]",
+    "borders": "border-2 border-zinc-200",
+    "active_state": "active:scale-[0.98] transition-transform duration-100"
+  },
+  "concepts": [
+    {
+      "name": "Concept 1: The 'One-Task-At-A-Time' Wizard",
+      "description": "Focuses the user completely on a single pending drawing. Eliminates navigation confusion by removing the 'queue' entirely from the primary view. They only see what's next.",
+      "flow": [
+        "Screen 1: Full-screen Drawing Preview with floating 'Review Next Drawing' pill at the bottom.",
+        "Screen 2: Drawing pinned to top 40% of screen. Bottom 60% holds two massive buttons stacked vertically: 'Approve Drawing (Green)' and 'Reject Drawing (Red)'.",
+        "Screen 3 (If Reject): The screen turns red-tinted. A giant 120px Microphone button sits in the center. 'Tap to record reason'. A secondary 'Add Site Photo' button sits below it. No keyboard shown."
+      ],
+      "key_ui_features": "Oversized action area. No traditional top-nav back buttons. Voice-first rejection bypasses the keyboard."
+    },
+    {
+      "name": "Concept 2: The 'Big Card Queue'",
+      "description": "A scrollable list of pending tasks designed for gloved hands. Each task is a massive card. Tapping opens a bottom-sheet drawer to take action.",
+      "flow": [
+        "Screen 1: Vertical list. Each card is 140px tall, showing a blueprint thumbnail, the floor/dept in huge text, and a pulsing 'Review Pending' badge.",
+        "Screen 2: Tapping a card opens a Bottom Sheet (Drawer) covering 90% of the screen. Drawing at the top. Huge Approve/Reject buttons sticky at the bottom.",
+        "Screen 3 (If Reject): Bottom sheet replaces buttons with a Voice Recorder UI (pulsing waves) and Camera toggle. A 'Submit' button appears only after audio is recorded."
+      ],
+      "key_ui_features": "Bottom-sheet driven to keep interactions in the 'thumb zone'. Scrolling list gives a sense of remaining workload."
+    },
+    {
+      "name": "Concept 3: The 'Tinder-Style' Swipe UI",
+      "description": "Turns the review process into a physical gesture, which is easier to execute without precise tapping.",
+      "flow": [
+        "Screen 1: A stack of cards taking up 85% of the screen. Card shows the blueprint and floor name. Swipe Right to Approve (Green overlay icon). Swipe Left to Reject (Red overlay icon).",
+        "Screen 2: If Swiped Left (Reject), an immediate full-screen modal pops up: 'Why rejecting?' with a pulsing microphone icon. Voice note is auto-transcribed."
+      ],
+      "key_ui_features": "Gamified but highly efficient. Zero small buttons. Physical gesture correlates directly to action."
+    }
+  ],
+  "components": [
+    {
+      "name": "Actionable Bottom Bar",
+      "library": "Tailwind HTML",
+      "rules": "Fixed at bottom, pb-8 (for iOS safe area), px-6. Contains stacked buttons with min-h-[72px]."
+    },
+    {
+      "name": "Voice Input Modal",
+      "library": "Shadcn Drawer",
+      "rules": "A massive 120x120px circular button with a lucide-react 'Mic' icon. Pulse animation (framer-motion) when recording. Subtext: 'Hold to speak'."
+    },
+    {
+      "name": "To Review Card",
+      "library": "Tailwind HTML",
+      "rules": "border-2 border-zinc-200, bg-white, p-5, rounded-2xl. Includes a 80x80 thumbnail, massive title (text-2xl), and a chevron-right to indicate tappability."
+    }
+  ],
+  "icons_and_assets": {
+    "library": "lucide-react",
+    "commands": "yarn add lucide-react",
+    "sizing": "w-8 h-8 or w-12 h-12 for primary actions. Stroke width 2.5 or 3 for visibility.",
+    "images": [
+      {
+        "category": "blueprint_thumbnails",
+        "url": "https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxibHVlcHJpbnQlMjBhcmNoaXRlY3R1cmFsJTIwZHJhd2luZ3xlbnwwfHx8fDE3ODE1NzcyNDF8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Used as the mock drawing to review in the cards and full-screen view."
+      },
+      {
+        "category": "user_avatar",
+        "url": "https://images.unsplash.com/photo-1672748341520-6a839e6c05bb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwxfHxjb25zdHJ1Y3Rpb24lMjBzaXRlJTIwd29ya2VyJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzgxNTc3MjQxfDA&ixlib=rb-4.1.0&q=85",
+        "description": "On-site worker profile picture for the top navigation."
+      }
+    ]
+  },
+  "testing_attributes": {
+    "rule": "All interactive elements must include 'data-testid'.",
+    "examples": [
+      "data-testid='approve-drawing-button'",
+      "data-testid='reject-drawing-button'",
+      "data-testid='record-voice-reason-button'",
+      "data-testid='drawing-task-card'",
+      "data-testid='take-photo-button'"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build the 3 concepts as distinct selectable tabs or distinct route views in the prototype so the client can compare them.",
+    "Wrap the entire UI in a container with 'max-w-[390px] mx-auto min-h-screen relative shadow-2xl' to simulate a mobile device screen on desktop browsers.",
+    "Implement the 'Voice-first rejection UI' explicitly. It should look like a giant dictaphone/voice-note interface (pulsing recording state), bypassing a standard text-area input.",
+    "Use massive buttons (min-h-[72px]) everywhere to simulate gloved-hand touch targets.",
+    "Remove all unnecessary chrome/navigation. The UI must be brutally simple.",
+    "Use the provided image URLs for mock blueprints and avatars. Do not use generic placeholders."
+  ]
+}
