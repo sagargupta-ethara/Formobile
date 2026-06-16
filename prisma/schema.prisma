@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("MONGO_URL")
 }
 
 enum Role {
@@ -66,7 +66,7 @@ enum Discipline {
 }
 
 model Specialization {
-  id         String           @id @default(cuid())
+  id         String           @id @default(cuid()) @map("_id")
   name       String           @unique
   users      User[]
   categories DesignCategory[]
@@ -74,7 +74,7 @@ model Specialization {
 }
 
 model User {
-  id               String          @id @default(cuid())
+  id               String          @id @default(cuid()) @map("_id")
   name             String
   email            String          @unique
   phone            String?
@@ -99,7 +99,7 @@ model User {
 }
 
 model Project {
-  id                 String        @id @default(cuid())
+  id                 String        @id @default(cuid()) @map("_id")
   name               String
   code               String        @unique
   clientName         String?
@@ -117,7 +117,7 @@ model Project {
 
 // Explicit project staffing — who is on this project's team.
 model ProjectMember {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   userId    String
@@ -128,7 +128,7 @@ model ProjectMember {
 }
 
 model Floor {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   floorName String
@@ -142,7 +142,7 @@ model Floor {
 // A drawing type. Rows with projectId = null form the master template;
 // each project gets its own editable copy of the register.
 model DesignCategory {
-  id               String          @id @default(cuid())
+  id               String          @id @default(cuid()) @map("_id")
   name             String
   projectId        String?
   project          Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -160,7 +160,7 @@ model DesignCategory {
 }
 
 model DesignTask {
-  id          String     @id @default(cuid())
+  id          String     @id @default(cuid()) @map("_id")
   projectId   String
   project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   floorId     String
@@ -196,7 +196,7 @@ model DesignTask {
 // departments (architect + site supervisor + MEP …). designerId stays the
 // primary assignee; every assignee (incl. primary) has a row here.
 model TaskAssignee {
-  id     String     @id @default(cuid())
+  id     String     @id @default(cuid()) @map("_id")
   taskId String
   task   DesignTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
   userId String
@@ -206,7 +206,7 @@ model TaskAssignee {
 }
 
 model DesignFile {
-  id           String   @id @default(cuid())
+  id           String   @id @default(cuid()) @map("_id")
   taskId       String
   task         DesignTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
   version      Int
@@ -222,7 +222,7 @@ model DesignFile {
 }
 
 model Review {
-  id           String         @id @default(cuid())
+  id           String         @id @default(cuid()) @map("_id")
   taskId       String
   task         DesignTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   reviewerId   String?
@@ -239,7 +239,7 @@ model Review {
 
 // Site photos attached to a review (typically a rejection).
 model ReviewPhoto {
-  id         String   @id @default(cuid())
+  id         String   @id @default(cuid()) @map("_id")
   reviewId   String
   review     Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   storageKey String
@@ -251,7 +251,7 @@ model ReviewPhoto {
 
 // In-app notification feed (Module 11).
 model Notification {
-  id        String    @id @default(cuid())
+  id        String    @id @default(cuid()) @map("_id")
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String    // ASSIGNED | UPLOADED | APPROVED | REJECTED | REVISION | REVIEW_OVERDUE
@@ -265,7 +265,7 @@ model Notification {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
+  id          String   @id @default(cuid()) @map("_id")
   entityType  String
   entityId    String
   action      String

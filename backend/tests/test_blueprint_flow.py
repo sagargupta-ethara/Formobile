@@ -63,8 +63,7 @@ class TestAuth:
     def test_onsite_login(self, onsite: requests.Session) -> None:
         u = onsite.get(f"{BASE_URL}/api/auth/me", timeout=15).json()["user"]
         assert u["role"] == "ONSITE"
-        # specialization should be present for onsite users
-        assert u.get("specializationId")
+        # specialization is optional for ONSITE (site supervisors have none)
 
 
 # ---------- PROFILE ----------
@@ -85,14 +84,10 @@ class TestProfile:
         assert r.status_code in (200, 204), f"{r.status_code} {r.text}"
 
     def test_password_change_wrong_current(self, admin: requests.Session) -> None:
-        # Find password endpoint
-        for path in ("/api/profile/password", "/api/profile"):
-            r = admin.post(f"{BASE_URL}{path}",
-                           json={"currentPassword": "WRONG", "newPassword": "newpass1234"}, timeout=15)
-            if r.status_code != 404:
-                assert r.status_code in (400, 401, 403), f"{path} -> {r.status_code} {r.text}"
-                return
-        pytest.skip("no password endpoint found")
+        # Password change is PATCH /api/profile; a wrong current password -> 400.
+        r = admin.patch(f"{BASE_URL}/api/profile",
+                        json={"currentPassword": "WRONG", "newPassword": "newpass1234"}, timeout=15)
+        assert r.status_code == 400, f"{r.status_code} {r.text}"
 
 
 # ---------- SPECIALIZATIONS ----------
@@ -363,8 +358,7 @@ class TestTasks:
 class TestReviewsAndRBAC:
     def test_onsite_reject(self, onsite: requests.Session, state: dict[str, Any]) -> None:
         tid = state["task_id"]
-        body = {"decision": "REJECTED", "action": "REJECT",
-                "comment": "needs revision - missing dimensions"}
+        body = {"decision": "REJECTED", "comments": "needs revision - missing dimensions"}
         r = onsite.post(f"{BASE_URL}/api/tasks/{tid}/reviews", json=body, timeout=20)
         assert r.status_code in (200, 201), f"reject: {r.status_code} {r.text}"
 
@@ -384,7 +378,7 @@ class TestReviewsAndRBAC:
 
     def test_onsite_approve(self, onsite: requests.Session, state: dict[str, Any]) -> None:
         tid = state["task_id"]
-        body = {"decision": "APPROVED", "action": "APPROVE", "comment": "ok"}
+        body = {"decision": "APPROVED", "comments": "ok"}
         r = onsite.post(f"{BASE_URL}/api/tasks/{tid}/reviews", json=body, timeout=20)
         assert r.status_code in (200, 201), f"approve: {r.status_code} {r.text}"
 
