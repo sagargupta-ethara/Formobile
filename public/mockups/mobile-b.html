@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mobile · Option B</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,560;9..144,600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/mockups/mobile-shared.css">
+</head><body class="p-10">
+<div class="max-w-[1320px] mx-auto">
+  <div class="text-center mb-8">
+    <div class="inline-block bg-white text-slate-800 mono font-bold text-xs px-4 py-1.5 rounded-full mb-3 tracking-widest">OPTION B · DRAWING CARDS</div>
+    <h1 class="serif text-white font-[560] text-4xl tracking-tight">Mobile view — Cards</h1>
+    <p class="text-slate-400 text-base mt-2">Same floors top-bar &amp; department pills, but signed drawings shown as 2-up cards with thumbnails.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 justify-center items-start">
+
+    <!-- PHONE 1: projects -->
+    <div><div class="phone"><div class="notch"></div><div class="scr">
+      <div class="appbar">
+        <div class="w-9 h-9 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">◈</div>
+        <div class="flex-1"><div class="serif font-semibold text-[1.05rem] leading-none">Projects</div><div class="text-[11px] text-slate-400 mt-1">3 active sites</div></div>
+        <img src="https://images.unsplash.com/photo-1672748341520-6a839e6c05bb?crop=entropy&cs=srgb&fm=jpg&w=80&q=70&ixlib=rb-4.1.0" class="w-9 h-9 rounded-full object-cover"/>
+      </div>
+      <div class="p-4 space-y-3 overflow-hidden">
+        <div class="card p-4 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#1e293b,#0f172a)">🏢</div>
+          <div class="flex-1 min-w-0"><div class="font-bold text-[.95rem]">ABC Corporate Tower</div><div class="mono text-[.72rem] text-slate-400">ABC-001 · 7 floors</div></div>
+          <span class="badge b-active">● Active</span>
+        </div>
+        <div class="card p-4 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#1e293b,#0f172a)">🏢</div>
+          <div class="flex-1 min-w-0"><div class="font-bold text-[.95rem]">Green Valley Villas</div><div class="mono text-[.72rem] text-slate-400">GVV-014 · 4 floors</div></div>
+          <span class="badge" style="background:#dbeafe;color:#1d4ed8">● Planning</span>
+        </div>
+        <div class="card p-4 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#1e293b,#0f172a)">🏢</div>
+          <div class="flex-1 min-w-0"><div class="font-bold text-[.95rem]">Skyline Mall</div><div class="mono text-[.72rem] text-slate-400">SKY-022 · 9 floors</div></div>
+          <span class="badge b-active">● Active</span>
+        </div>
+      </div>
+    </div></div><div class="cap">1 · Pick a project</div></div>
+
+    <!-- PHONE 2: floors + dept + CARDS -->
+    <div><div class="phone"><div class="notch"></div><div class="scr">
+      <div class="appbar">
+        <div class="icbtn">←</div>
+        <div class="flex-1"><div class="font-bold text-[.98rem] leading-tight">ABC Corporate Tower</div><div class="text-[11px] text-slate-400">Active · Sector 62</div></div>
+        <span class="badge b-active">Active</span>
+      </div>
+      <div class="pt-3"><div class="label px-4 mb-1.5">Floors — tap to open</div>
+        <div class="hscroll">
+          <div class="floor">Base <small>0</small></div><div class="floor">Stilt <small>2</small></div>
+          <div class="floor floor-active">Ground <small>14</small></div><div class="floor">First <small>11</small></div>
+          <div class="floor">Second <small>9</small></div><div class="floor">Third <small>9</small></div>
+        </div></div>
+      <div class="pt-3 pb-1"><div class="hscroll">
+        <div class="pill pill-active">Interior Design <span class="cnt">14</span></div>
+        <div class="pill">Structure <span class="cnt">6</span></div>
+        <div class="pill">MEP <span class="cnt">8</span></div>
+      </div></div>
+      <div class="px-4 pt-3 pb-1"><span class="font-bold text-[.9rem]">Ground · Interior</span><span class="text-slate-400 text-[.78rem]"> · 14 signed</span></div>
+      <div class="flex-1 overflow-hidden px-4">
+        <div class="grid grid-cols-2 gap-2.5" id="g"></div>
+      </div>
+    </div></div><div class="cap">2 · Signed drawings as cards</div></div>
+
+    <!-- PHONE 3: open drawing -->
+    <div><div class="phone"><div class="notch"></div><div class="scr">
+      <div class="appbar"><div class="icbtn">←</div><div class="flex-1"><div class="font-bold text-[.95rem] leading-tight">False Ceiling Layout</div><div class="mono text-[11px] text-slate-400">Ground · V2</div></div><div class="icbtn">⤢</div></div>
+      <div class="flex-1 relative" style="background:#0f172a">
+        <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=600&q=80&ixlib=rb-4.1.0" class="w-full h-full object-cover"/>
+      </div>
+      <div class="bg-white border-t p-4" style="border-color:var(--line)">
+        <div class="flex items-center gap-2 mb-3"><span class="badge b-appr">✓ Signed</span><span class="text-[.8rem] text-slate-500">Virender · 12 Jun</span></div>
+        <div class="flex gap-2.5">
+          <button class="btn btn-ghost flex-1" style="min-height:52px">⤓ Download</button>
+          <button class="btn btn-primary flex-1" style="min-height:52px">Share</button>
+        </div>
+        <p class="text-center text-[.72rem] text-slate-400 mt-2.5">Pending drawings show big Approve / Reject here</p>
+      </div>
+    </div></div><div class="cap">3 · Open drawing full-screen</div></div>
+
+  </div>
+</div>
+<script>
+const d=[["Furniture Layout","V3"],["False Ceiling","V2"],["Flooring Plan","V2"],["Wall Paneling","V1"],["Reflected Ceiling","V2"],["Wardrobe Details","V1"]];
+const img="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=300&q=70&ixlib=rb-4.1.0";
+document.getElementById('g').innerHTML=d.map(x=>`
+ <div class="card overflow-hidden">
+   <div class="h-20 relative" style="background:#dbe7f5"><img src="${img}" class="w-full h-full object-cover"/><span class="badge b-appr" style="position:absolute;top:6px;left:6px">✓</span></div>
+   <div class="p-2.5"><div class="font-semibold text-[.78rem] leading-tight truncate">${x[0]}</div><div class="flex items-center justify-between mt-1.5"><span class="mono text-[.66rem] text-slate-400">${x[1]}</span><button class="btn btn-primary" style="padding:.25rem .5rem;font-size:.68rem">Open</button></div></div>
+ </div>`).join('');
+</script>
+</body></html>

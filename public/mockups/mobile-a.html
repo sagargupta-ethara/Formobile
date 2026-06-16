@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mobile · Option A</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,560;9..144,600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/mockups/mobile-shared.css">
+</head><body class="p-10">
+<div class="max-w-[1320px] mx-auto">
+  <div class="text-center mb-8">
+    <div class="inline-block bg-white text-slate-800 mono font-bold text-xs px-4 py-1.5 rounded-full mb-3 tracking-widest">OPTION A · DRAWING LIST</div>
+    <h1 class="serif text-white font-[560] text-4xl tracking-tight">Mobile view — List</h1>
+    <p class="text-slate-400 text-base mt-2">Projects → tap project → floors top-bar → department pills → all signed drawings as a simple list.</p>
+  </div>
+  <div class="flex flex-wrap gap-10 justify-center items-start">
+
+    <!-- PHONE 1: projects -->
+    <div><div class="phone"><div class="notch"></div><div class="scr">
+      <div class="appbar">
+        <div class="w-9 h-9 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">◈</div>
+        <div class="flex-1"><div class="serif font-semibold text-[1.05rem] leading-none">Projects</div><div class="text-[11px] text-slate-400 mt-1">3 active sites</div></div>
+        <img src="https://images.unsplash.com/photo-1672748341520-6a839e6c05bb?crop=entropy&cs=srgb&fm=jpg&w=80&q=70&ixlib=rb-4.1.0" class="w-9 h-9 rounded-full object-cover"/>
+      </div>
+      <div class="p-4 space-y-3 overflow-hidden">
+        <div class="card p-4 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#1e293b,#0f172a)">🏢</div>
+          <div class="flex-1 min-w-0"><div class="font-bold text-[.95rem]">ABC Corporate Tower</div><div class="mono text-[.72rem] text-slate-400">ABC-001 · 7 floors</div></div>
+          <span class="badge b-active">● Active</span>
+        </div>
+        <div class="card p-4 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#1e293b,#0f172a)">🏢</div>
+          <div class="flex-1 min-w-0"><div class="font-bold text-[.95rem]">Green Valley Villas</div><div class="mono text-[.72rem] text-slate-400">GVV-014 · 4 floors</div></div>
+          <span class="badge" style="background:#dbeafe;color:#1d4ed8">● Planning</span>
+        </div>
+        <div class="card p-4 flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl grid place-items-center text-white flex-shrink-0" style="background:linear-gradient(135deg,#1e293b,#0f172a)">🏢</div>
+          <div class="flex-1 min-w-0"><div class="font-bold text-[.95rem]">Skyline Mall</div><div class="mono text-[.72rem] text-slate-400">SKY-022 · 9 floors</div></div>
+          <span class="badge b-active">● Active</span>
+        </div>
+      </div>
+    </div></div><div class="cap">1 · Pick a project</div></div>
+
+    <!-- PHONE 2: floors + dept + LIST -->
+    <div><div class="phone"><div class="notch"></div><div class="scr">
+      <div class="appbar">
+        <div class="icbtn">←</div>
+        <div class="flex-1"><div class="font-bold text-[.98rem] leading-tight">ABC Corporate Tower</div><div class="text-[11px] text-slate-400">Active · Sector 62</div></div>
+        <span class="badge b-active">Active</span>
+      </div>
+      <div class="pt-3"><div class="label px-4 mb-1.5">Floors — tap to open</div>
+        <div class="hscroll">
+          <div class="floor">Base <small>0</small></div><div class="floor">Stilt <small>2</small></div>
+          <div class="floor floor-active">Ground <small>14</small></div><div class="floor">First <small>11</small></div>
+          <div class="floor">Second <small>9</small></div><div class="floor">Third <small>9</small></div>
+        </div></div>
+      <div class="pt-3 pb-1"><div class="hscroll">
+        <div class="pill pill-active">Interior Design <span class="cnt">14</span></div>
+        <div class="pill">Structure <span class="cnt">6</span></div>
+        <div class="pill">MEP <span class="cnt">8</span></div>
+      </div></div>
+      <div class="flex items-center justify-between px-4 pt-3 pb-1">
+        <div><span class="font-bold text-[.9rem]">Ground · Interior</span><span class="text-slate-400 text-[.78rem]"> · 14 signed</span></div>
+        <div class="icbtn">🔍</div>
+      </div>
+      <div class="flex-1 overflow-hidden px-4 space-y-2">
+        <div class="card flex items-center gap-3 px-3 py-3">
+          <div class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0" style="background:#f1f5f9">📄</div>
+          <div class="flex-1 min-w-0"><div class="font-semibold text-[.86rem] truncate">Furniture Layout Plan</div><div class="flex items-center gap-1.5 mt-0.5"><span class="mono text-[.68rem] text-slate-400">V3</span><span class="badge b-appr">✓ Signed</span></div></div>
+          <button class="btn btn-primary">Open</button>
+        </div>
+        <div class="card flex items-center gap-3 px-3 py-3">
+          <div class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0" style="background:#f1f5f9">📄</div>
+          <div class="flex-1 min-w-0"><div class="font-semibold text-[.86rem] truncate">False Ceiling Layout</div><div class="flex items-center gap-1.5 mt-0.5"><span class="mono text-[.68rem] text-slate-400">V2</span><span class="badge b-appr">✓ Signed</span></div></div>
+          <button class="btn btn-primary">Open</button>
+        </div>
+        <div class="card flex items-center gap-3 px-3 py-3">
+          <div class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0" style="background:#f1f5f9">📄</div>
+          <div class="flex-1 min-w-0"><div class="font-semibold text-[.86rem] truncate">Flooring & Finishes</div><div class="flex items-center gap-1.5 mt-0.5"><span class="mono text-[.68rem] text-slate-400">V2</span><span class="badge b-appr">✓ Signed</span></div></div>
+          <button class="btn btn-primary">Open</button>
+        </div>
+        <div class="card flex items-center gap-3 px-3 py-3">
+          <div class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0" style="background:#f1f5f9">📄</div>
+          <div class="flex-1 min-w-0"><div class="font-semibold text-[.86rem] truncate">Wall Paneling Details</div><div class="flex items-center gap-1.5 mt-0.5"><span class="mono text-[.68rem] text-slate-400">V1</span><span class="badge b-appr">✓ Signed</span></div></div>
+          <button class="btn btn-primary">Open</button>
+        </div>
+        <div class="card flex items-center gap-3 px-3 py-3">
+          <div class="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0" style="background:#f1f5f9">📄</div>
+          <div class="flex-1 min-w-0"><div class="font-semibold text-[.86rem] truncate">Reflected Ceiling Plan</div><div class="flex items-center gap-1.5 mt-0.5"><span class="mono text-[.68rem] text-slate-400">V2</span><span class="badge b-appr">✓ Signed</span></div></div>
+          <button class="btn btn-primary">Open</button>
+        </div>
+      </div>
+    </div></div><div class="cap">2 · Floors on top · drawings list</div></div>
+
+    <!-- PHONE 3: open drawing -->
+    <div><div class="phone"><div class="notch"></div><div class="scr">
+      <div class="appbar"><div class="icbtn">←</div><div class="flex-1"><div class="font-bold text-[.95rem] leading-tight">Furniture Layout Plan</div><div class="mono text-[11px] text-slate-400">Ground · V3</div></div><div class="icbtn">⤢</div></div>
+      <div class="flex-1 relative" style="background:#0f172a">
+        <img src="https://images.unsplash.com/photo-1721244654392-9c912a6eb236?crop=entropy&cs=srgb&fm=jpg&w=600&q=80&ixlib=rb-4.1.0" class="w-full h-full object-cover"/>
+      </div>
+      <div class="bg-white border-t p-4" style="border-color:var(--line)">
+        <div class="flex items-center gap-2 mb-3"><span class="badge b-appr">✓ Signed</span><span class="text-[.8rem] text-slate-500">Pradeep Rawat · 12 Jun</span></div>
+        <div class="flex gap-2.5">
+          <button class="btn btn-ghost flex-1" style="min-height:52px">⤓ Download</button>
+          <button class="btn btn-primary flex-1" style="min-height:52px">Share</button>
+        </div>
+        <p class="text-center text-[.72rem] text-slate-400 mt-2.5">Pending drawings show big Approve / Reject here</p>
+      </div>
+    </div></div><div class="cap">3 · Open drawing full-screen</div></div>
+
+  </div>
+</div>
+</body></html>
