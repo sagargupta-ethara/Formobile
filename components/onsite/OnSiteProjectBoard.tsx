@@ -12,6 +12,7 @@ import {
   Hammer,
 } from "lucide-react";
 import DrawingReviewModal from "@/components/DrawingReviewModal";
+import { STATUS_LABEL, statusStyle, PROJECT_STATUS_LABEL } from "@/lib/format";
 
 /* ---- shared shapes (mirror the project page) ---- */
 interface Floor {
@@ -45,13 +46,6 @@ const DISCIPLINES = [
 
 type StatusKey = "APPROVED" | "PENDING" | "REJECTED" | "PROGRESS";
 
-const STATUS_META: Record<StatusKey, { label: string; bg: string; fg: string }> = {
-  APPROVED: { label: "Signed", bg: "#dcfce7", fg: "#15803d" },
-  PENDING: { label: "Needs review", bg: "#fef3c7", fg: "#b45309" },
-  REJECTED: { label: "Sent back", bg: "#fee2e2", fg: "#b91c1c" },
-  PROGRESS: { label: "In progress", bg: "#eef2f7", fg: "#475569" },
-};
-
 function statusKey(s: string): StatusKey {
   if (s === "APPROVED") return "APPROVED";
   if (s === "PENDING_REVIEW" || s === "REVISION_SUBMITTED") return "PENDING";
@@ -67,16 +61,16 @@ const PROJECT_STATUS_TINT: Record<string, { bg: string; fg: string }> = {
   COMPLETED: { bg: "#eef2f7", fg: "#475569" },
 };
 
-type FilterKey = "REVIEW" | "SIGNED" | "ALL";
+type FilterKey = "REVIEW" | "APPROVED" | "ALL";
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "REVIEW", label: "To review" },
-  { key: "SIGNED", label: "Signed" },
+  { key: "APPROVED", label: "Approved" },
   { key: "ALL", label: "All" },
 ];
 
 function matchesFilter(s: string, f: FilterKey): boolean {
   if (f === "ALL") return true;
-  if (f === "SIGNED") return s === "APPROVED";
+  if (f === "APPROVED") return s === "APPROVED";
   // REVIEW = anything needing the reviewer's action
   return s === "PENDING_REVIEW" || s === "REVISION_SUBMITTED" || s === "REJECTED";
 }
@@ -203,7 +197,7 @@ export default function OnSiteProjectBoard({
             color: tint.fg,
           }}
         >
-          ● {project.status}
+          ● {PROJECT_STATUS_LABEL[project.status] ?? project.status}
         </span>
       </div>
 
@@ -400,7 +394,7 @@ export default function OnSiteProjectBoard({
           <div>
             {drawings.map((t, i) => {
               const sk = statusKey(t.status);
-              const sm = STATUS_META[sk];
+              const ss = statusStyle(t.status);
               return (
                 <div
                   key={t.id}
@@ -449,12 +443,12 @@ export default function OnSiteProjectBoard({
                           fontWeight: 600,
                           padding: "0.16rem 0.5rem",
                           borderRadius: 999,
-                          background: sm.bg,
-                          color: sm.fg,
+                          background: ss.bg,
+                          color: ss.fg,
                         }}
                       >
                         {sk === "APPROVED" ? <Check size={11} /> : sk === "PENDING" ? <Clock size={11} /> : sk === "REJECTED" ? <RotateCcw size={11} /> : null}
-                        {sm.label}
+                        {STATUS_LABEL[t.status] ?? t.status}
                       </span>
                       {t.reviewer?.name && (
                         <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
