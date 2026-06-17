@@ -92,8 +92,8 @@ export default function OnSiteProjectBoard({
   meId: string;
   onReload: () => void;
 }) {
-  const floorsTopFirst = useMemo(
-    () => [...project.floors].sort((a, b) => b.order - a.order),
+  const floorsBottomFirst = useMemo(
+    () => [...project.floors].sort((a, b) => a.order - b.order),
     [project.floors]
   );
 
@@ -219,7 +219,7 @@ export default function OnSiteProjectBoard({
           data-testid="onsite-floor-bar"
           style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}
         >
-          {floorsTopFirst.map((f) => {
+          {floorsBottomFirst.map((f) => {
             const active = f.id === floorId;
             return (
               <button
@@ -490,10 +490,8 @@ export default function OnSiteProjectBoard({
   );
 }
 
-/** Compact floor label for the top bar (e.g. "Ground Floor" -> "Ground"). */
+/** Compact floor label for the top bar (e.g. "Ground Floor" -> "Ground").
+ *  Basement levels are shown in full ("Basement", "Basement 2"). */
 function shortFloor(name: string): string {
-  return name
-    .replace(/\s*Floor$/i, "")
-    .replace(/^Basement(\s|$)/i, "Base$1")
-    .trim();
+  return name.replace(/\s*Floor$/i, "").trim();
 }
