@@ -40,6 +40,7 @@ import AnalyticsTab from "@/components/project/AnalyticsTab";
 import TeamTab from "@/components/project/TeamTab";
 import RevisionsTab from "@/components/project/RevisionsTab";
 import RegisterTab from "@/components/project/RegisterTab";
+import OnSiteProjectBoard from "@/components/onsite/OnSiteProjectBoard";
 
 interface Project {
   id: string;
@@ -149,6 +150,19 @@ export default function ProjectDetailPage() {
         <Skeleton />
       </>
     );
+
+  // On-site reviewers get the simplified "Drawing List" experience
+  // (floors → departments → drawings → full-screen preview/approve).
+  if (role === "ONSITE") {
+    return (
+      <OnSiteProjectBoard
+        project={project}
+        tasks={tasks}
+        meId={meId}
+        onReload={load}
+      />
+    );
+  }
 
   const isAdmin = role === "ADMIN";
 

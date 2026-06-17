@@ -101,6 +101,25 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-17 (On-Site "Drawing List" UI — Option A integrated)
+- Integrated the client-selected **Option A · Drawing List** design as the On-Site
+  reviewer experience (both mobile and desktop, one responsive component).
+- New `components/onsite/OnSiteProjectBoard.tsx`: project header + **floors top-bar**
+  (per-floor drawing counts) → **department pills** (Interior/Structure/MEP/Woodwork
+  with counts) → **drawings list** (To review / Signed / All filter + search) →
+  **Open** launches the existing `DrawingReviewModal` (full preview + zoom/rotate/
+  download + Approve/Reject for pending). Status badges: Signed / Needs review /
+  Sent back / In progress. All elements have `data-testid`s.
+- Wired into `app/(app)/projects/[id]/page.tsx`: when `role === "ONSITE"` it renders
+  the board instead of the admin Building UI. Admin/Designer views unchanged (verified).
+- **No backend changes** — reuses role-scoped `GET /api/tasks?projectId=` (floor,
+  category.discipline, status, reviewer) + `GET /api/projects/[id]` (floors).
+- Verified in preview (desktop): floors(7)/pills(4) render with counts, 2 pending
+  Interior drawings on Ground show "Needs review", Open → review modal with
+  Approve/Reject; Admin regression OK. Responsive by design (overflow-x scroll bars,
+  flex-wrap header + modal body, clamp() title). Created demo review tasks
+  (reviewer = Sudama) in preview for testing/demo. **Requires REDEPLOY for production.**
+
 ## Changelog — 2026-06-16 (v5: drawing register missing on Mongo — root cause)
 - **Symptom:** in prod, floors showed "No drawings match" / "0 of 0 drawings" for
   every discipline; the drawing-type master register appeared empty.
