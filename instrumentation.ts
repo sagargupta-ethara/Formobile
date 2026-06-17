@@ -5,4 +5,6 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { ensureSeeded } = await import("./lib/bootstrap");
   await ensureSeeded();
+  const { scheduleBackups } = await import("./lib/backup");
+  scheduleBackups();
 }

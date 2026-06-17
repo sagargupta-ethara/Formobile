@@ -96,6 +96,12 @@ function resolveMongoUrl(): string | undefined {
 
 const datasourceUrl = resolveMongoUrl();
 
+/** The fully-resolved Mongo connection string the app uses (db name folded in,
+ *  unsupported params stripped). Used by the backup module's raw driver. */
+export function getMongoUrl(): string | undefined {
+  return datasourceUrl;
+}
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({

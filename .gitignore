@@ -8,3 +8,6 @@ next-env.d.ts
 CREDENTIALS.md
 memory/test_credentials.md
 test_credentials.md
+
+# database backup archives (durable copy lives in the DB)
+/backups

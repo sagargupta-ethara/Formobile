@@ -8,6 +8,26 @@ datasource db {
   url      = env("MONGO_URL")
 }
 
+/// Daily automated database snapshots (logical dump, gzipped).
+/// The archive bytes are stored in-DB for durability; a copy is also written
+/// to the BACKUP_DIR on disk. Retention is enforced in lib/backup.ts.
+model DbBackup {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  dateKey   String   @unique // YYYY-MM-DD (one scheduled backup per day)
+  trigger   String // "scheduled" | "manual"
+  status    String // "running" | "complete" | "failed"
+  filename  String
+  sizeBytes Int      @default(0)
+  stats     Json? // per-collection document counts
+  archive   Bytes? // gzipped EJSON archive (omitted if too large for a doc)
+  inDb      Boolean  @default(false) // whether archive bytes are stored here
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
 enum Role {
   ADMIN
   DESIGNER

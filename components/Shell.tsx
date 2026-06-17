@@ -14,6 +14,7 @@ import {
   UserCircle,
   Menu,
   X,
+  DatabaseBackup,
 } from "lucide-react";
 import { Avatar } from "@/components/ui";
 import NotificationBell from "@/components/NotificationBell";
@@ -36,6 +37,7 @@ function navFor(role: Role): NavItem[] {
       { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
       { href: "/tasks", label: "Design Tasks", icon: <ListChecks {...I} /> },
       { href: "/users", label: "Team", icon: <Users {...I} /> },
+      { href: "/backups", label: "Backups", icon: <DatabaseBackup {...I} /> },
       profile,
     ];
   if (role === "DESIGNER")

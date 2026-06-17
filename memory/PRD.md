@@ -101,6 +101,32 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-17 (Automated daily database backups)
+- Implemented automated **full DB backup every day at midnight** + restore.
+- `lib/backup.ts`: logical dump via the MongoDB driver (no external `mongodump`
+  dependency — works in the managed prod container), gzipped EJSON archive
+  (type-preserving). Each backup is stored **both in the DB** (`DbBackup` model,
+  `archive Bytes`, durable on Atlas) **and as a file** in `BACKUP_DIR`
+  (`/app/backups`, gitignored). **14-day retention** auto-prunes older backups
+  (docs + files).
+- **Scheduler**: `node-cron` started from `instrumentation.ts` → runs in-process,
+  cron `BACKUP_CRON` (default `0 0 * * *`) in `BACKUP_TZ` (default Asia/Kolkata).
+  Scheduled runs are claimed once per day via a unique `dateKey` index, so the 2
+  production replicas never double-run. Manual runs use a timestamped key.
+- **Admin UI**: new `/backups` page (ADMIN-only nav item) — "Protected" status,
+  "Back up now", table (when/type/status/size/records/download). APIs:
+  `GET/POST /api/admin/backups`, `GET /api/admin/backups/[id]/download` (ADMIN-only).
+- **Restore** (manual, per client choice — no risky UI button): self-contained
+  `scripts/restore-backup.ts` → `npx tsx scripts/restore-backup.ts [backupId]`
+  (defaults to latest). Drops + re-inserts each collection from the archive.
+- New deps: `mongodb`, `node-cron`. Schema: `DbBackup` model (+ `getMongoUrl()`
+  exported from `lib/db`).
+- **Verified in preview**: manual backup → 212 records, 7 KB, stored in DB + disk;
+  download works; restore removed an injected marker doc and left users/categories
+  intact (login OK). Scheduler logged at boot. **Requires REDEPLOY for production.**
+- Note: prod also runs on managed Atlas which may have its own snapshots; this is an
+  app-level backup in addition. Disk file is ephemeral in prod, but the DB copy is durable.
+
 ## Changelog — 2026-06-17 (On-Site "Drawing List" UI — Option A integrated)
 - Integrated the client-selected **Option A · Drawing List** design as the On-Site
   reviewer experience (both mobile and desktop, one responsive component).
