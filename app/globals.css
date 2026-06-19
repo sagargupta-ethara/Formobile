@@ -595,6 +595,42 @@ body {
   }
 }
 
+/* Drawing register rows — stack on small screens so the drawing name isn't
+   squeezed to a sliver by the badge/zone/action cluster. */
+.register-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.65rem;
+  background: #f8fafc;
+  border-radius: 7px;
+  font-size: 0.82rem;
+}
+.register-row .reg-name {
+  min-width: 0;
+  flex: 1;
+  word-break: break-word;
+}
+.register-row .reg-meta {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .register-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .register-row .reg-meta {
+    justify-content: flex-start;
+  }
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

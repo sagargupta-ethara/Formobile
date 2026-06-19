@@ -122,21 +122,9 @@ export default function RegisterTab({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 480, overflowY: "auto", paddingRight: 4 }}>
         {visible.map((c) => (
-          <div
-            key={c.id}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
-              padding: "0.45rem 0.6rem",
-              background: "#f8fafc",
-              borderRadius: 7,
-              fontSize: "0.82rem",
-            }}
-          >
-            <span style={{ minWidth: 0 }}>{c.name}</span>
-            <span style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+          <div key={c.id} className="register-row">
+            <span className="reg-name">{c.name}</span>
+            <span className="reg-meta">
               <Badge bg="#f8fafc" fg="#64748b">
                 {DISCIPLINES.find((d) => d.key === c.discipline)?.label ?? c.discipline}
               </Badge>

@@ -29,6 +29,16 @@ const KIND_META: Record<Event["kind"], { label: string; icon: React.ReactNode; c
 
 const FILTERS = ["ALL", "REVISION", "REJECTED", "APPROVED", "UPLOAD"] as const;
 
+// Display labels for the filter chips (grammatically correct — do NOT just
+// append "s" to the event labels, which produced "Approveds"/"Uploadeds").
+const FILTER_LABEL: Record<(typeof FILTERS)[number], string> = {
+  ALL: "All",
+  REVISION: "Revisions",
+  REJECTED: "Rejected",
+  APPROVED: "Approved",
+  UPLOAD: "Uploads",
+};
+
 /** Every upload, revision and review decision in the project — click through
  *  to the task's full history. */
 export default function RevisionsTab({ projectId }: { projectId: string }) {
@@ -65,7 +75,7 @@ export default function RevisionsTab({ projectId }: { projectId: string }) {
               cursor: "pointer",
             }}
           >
-            {f === "ALL" ? "All" : KIND_META[f as Event["kind"]].label + "s"}
+            {FILTER_LABEL[f]}
           </button>
         ))}
       </div>

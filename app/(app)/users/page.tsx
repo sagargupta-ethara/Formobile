@@ -37,6 +37,13 @@ const ROLE_LABEL: Record<string, string> = {
   ONSITE: "On-Site",
 };
 
+// Plural headings for the department-fallback grouping (avoids "On-Sites").
+const ROLE_GROUP_LABEL: Record<string, string> = {
+  ADMIN: "Admins",
+  DESIGNER: "Designers",
+  ONSITE: "On-Site Team",
+};
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[] | null>(null);
   const [specs, setSpecs] = useState<Spec[]>([]);
@@ -88,7 +95,7 @@ export default function UsersPage() {
         [...users
           .reduce((m, u) => {
             const key =
-              u.department ?? (ROLE_LABEL[u.role] ? `${ROLE_LABEL[u.role]}s` : "Other");
+              u.department ?? ROLE_GROUP_LABEL[u.role] ?? "Other";
             if (!m.has(key)) m.set(key, []);
             m.get(key)!.push(u);
             return m;

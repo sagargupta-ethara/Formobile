@@ -101,6 +101,22 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-19 (UI fixes: naming, spelling, mobile register)
+- **Tab/heading mismatch:** renamed the project tab "Drawing Master" → **"Drawing Register"**
+  so it matches its own heading (`projects/[id]/page.tsx`).
+- **Spelling/pluralization bug:** the Revisions filter chips appended "s" to event
+  labels producing "Approveds / Rejecteds / Uploadeds". Fixed `RevisionsTab.tsx`
+  with an explicit `FILTER_LABEL` map → **All · Revisions · Rejected · Approved · Uploads**.
+  Also fixed the Team page department-fallback grouping ("On-Sites" → "On-Site Team").
+  Swept the app for `+"s"` label patterns and common misspellings — none others found.
+- **Mobile alignment (admin/designer Drawing Register):** register rows were cramped
+  on phones (drawing name squeezed to a sliver by the badge/zone/action cluster).
+  Added `.register-row` responsive classes in `globals.css` — on ≤640px the row stacks
+  (name full-width on its own line, meta/actions wrap below). Applied in `RegisterTab.tsx`.
+- Verified on desktop (build OK, tab + filter labels correct). Mobile uses a CSS media
+  query (the screenshot tool only captures wide, so verified by CSS not screenshot).
+  **Requires REDEPLOY for production.**
+
 ## Changelog — 2026-06-17 (Automated daily database backups)
 - Implemented automated **full DB backup every day at midnight** + restore.
 - `lib/backup.ts`: logical dump via the MongoDB driver (no external `mongodump`
