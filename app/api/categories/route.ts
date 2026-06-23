@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     await requireRole("ADMIN");
-    const { name, projectId, specializationId, appliesTo, discipline } = z
+    const { name, projectId, specializationId, appliesTo, floorIds, discipline } = z
       .object({
         name: z.string().min(1),
         projectId: z.string().min(1),
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
         appliesTo: z
           .array(z.enum(["BASEMENT", "STILT", "FLOOR", "TERRACE"]))
           .optional(),
+        floorIds: z.array(z.string()).optional(),
         discipline: z
           .enum(["INTERIOR", "STRUCTURE", "MEP", "WOODWORK"])
           .optional(),
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
         projectId,
         specializationId: specializationId || null,
         appliesTo: appliesTo ?? [],
+        floorIds: floorIds ?? [],
         discipline: discipline ?? "INTERIOR",
       },
     });

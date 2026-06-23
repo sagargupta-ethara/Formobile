@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration-3 audit of per-floor Drawing Register (floorIds[] on DesignCategory). 6/6 backend pytest pass; UI flows for Drawing Register filter chips, Add Drawing, Manage floor, and Assign Task drawing filter all work. Spec is met; one minor cosmetic deviation in filter chip labels (abbreviated to 'Ground'/'First'/'Second'/'Third' instead of 'Ground Floor'/'First Floor'/etc.).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Project → Drawing Register tab",
+        "issues": [
+          "Floor filter chips render abbreviated labels: 'All · Basement · Stilt · Ground · First · Second · Third · Terrace'. Spec called for full floor names ('Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'). The 'On Floors' picker inside the Add Drawing modal and the Assign Task modal both use the full names correctly — the inconsistency is only on the chip row. Likely a horizontal-space trim in RegisterTab.tsx."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_floor_ids.py",
+    "/app/test_reports/pytest/iteration_3.xml"
+  ],
+  "action_items": [
+    "(Optional/cosmetic) Restore full floor names on the Drawing Register filter chips to match spec ('Ground Floor' rather than 'Ground'). The functional flows are unaffected."
+  ],
+  "critical_code_review_comments": [
+    "Backend behaviour matches spec on all 5 verified change points: floorIds backfill (70/70 drawings populated, all ids valid), PATCH per-floor remove keeps other floors, POST with floorIds=[<id>] creates on that floor only, POST /projects/{id}/floors auto-populates the new floor with master drawings (39 drawings auto-attached on the Test project for a new FLOOR), DELETE /floors/{id} cleanly $pulls the id from all drawings (no orphans).",
+    "RegisterTab.tsx 'On Floors' picker uses <button> toggles (not checkboxes); the data-testid='drawing-floors-picker' wraps them but they are not input[type=checkbox]. The pre-select behaviour is correct (verified visually — Ground Floor highlighted when Ground filter was active before opening). Tests that count :checked inputs will misreport — use [aria-pressed='true'] or button state classes if asserting in tests.",
+    "FloorDrawingsModal correctly exposes 70 floor-drawing-toggle-* testids and a floor-drawings-save-btn testid; 'N selected' footer matches the floor's drawing count (28 for Ground Floor).",
+    "Assign Task modal correctly filters Drawing Type by selectedFloor.floorIds — the sub-label '28 drawing types for this floor level' is a nice UX confirmation."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_floor_ids.py (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6 pytest)",
+    "frontend": "100% functional — 1 minor cosmetic label deviation"
+  },
+  "test_credentials": "manish.uppal@blueprintflow.in / amarpreet.padam@blueprintflow.in / sudama@blueprintflow.in — all password123",
+  "seed_data_creation": "Each test cleans up after itself: created+deleted one TEST_PerFloorCat_* drawing, created+deleted one TEST_Floor_* floor. PATCH-remove test restores the original floorIds. Test project (cmqgcmd1s0000ig2lwj4tj5cs) left in the same state as found (still 70 drawings).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use /app/backend/tests/test_floor_ids.py as a regression for any future floor/floorIds changes. The Test project's floor ids are hard-coded in that file; if seeds are rebuilt these will need updating. Note that the floors picker and per-floor toggle controls are <button>s not <input type=checkbox> — selectors using ':checked' won't work, use [aria-pressed] / data-state instead.",
+  "rca of the issue": "No bugs. Cosmetic-only chip label abbreviation in RegisterTab.tsx (the chip row trims 'Ground Floor' → 'Ground' etc.). All other backend and frontend behaviour matches the spec."
+}

@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import type { FloorType, Role } from "@prisma/client";
 import { prisma } from "./db";
 import { drawingRegister, guessDiscipline, guessSpecialization } from "./drawingTypes";
-import { copyTemplateRegister } from "./projectRegister";
+import { copyTemplateRegister, floorIdsForApplies } from "./projectRegister";
 
 // The firm's real team — kept in sync with prisma/import-team.ts. Seeded on an
 // empty database so a fresh deploy has working logins (shared password below).
@@ -123,6 +123,47 @@ export async function ensureSeeded(): Promise<void> {
           }
         }
       }
+    }
+
+    // ---- Backfill per-floor membership (floorIds) on legacy registers ----
+    // Pre-refactor, a drawing's applicability was a floor-TYPE rule (appliesTo).
+    // Now each specific floor has its own list (floorIds). Seed floorIds from
+    // appliesTo for any project drawing that has never had the field set
+    // ($exists:false) so we don't clobber lists an admin has since edited.
+    try {
+      const cursor = (await prisma.$runCommandRaw({
+        find: "DesignCategory",
+        filter: { projectId: { $ne: null }, floorIds: { $exists: false } },
+        projection: { _id: 1, projectId: 1, appliesTo: 1 },
+        batchSize: 100000,
+      })) as { cursor?: { firstBatch?: Array<{ _id: string; projectId: string; appliesTo?: string[] }> } };
+      const pending = cursor?.cursor?.firstBatch ?? [];
+      if (pending.length) {
+        const allFloors = await prisma.floor.findMany({
+          select: { id: true, floorType: true, projectId: true },
+        });
+        const byProject = new Map<string, { id: string; floorType: string }[]>();
+        for (const f of allFloors) {
+          const arr = byProject.get(f.projectId) ?? [];
+          arr.push({ id: f.id, floorType: f.floorType });
+          byProject.set(f.projectId, arr);
+        }
+        const updates = pending.map((c) => ({
+          q: { _id: c._id },
+          u: {
+            $set: {
+              floorIds: floorIdsForApplies(
+                c.appliesTo ?? [],
+                byProject.get(c.projectId) ?? []
+              ),
+            },
+          },
+        }));
+        await prisma.$runCommandRaw({ update: "DesignCategory", updates });
+        console.log(`[bootstrap] Backfilled floorIds on ${pending.length} drawings.`);
+      }
+    } catch (err) {
+      console.error("[bootstrap] floorIds backfill skipped:", err instanceof Error ? err.message : err);
     }
 
     // ---- Team users (shared initial password) — only when there are none ----

@@ -16,6 +16,7 @@ interface Person extends Opt {
 }
 interface Category extends Opt {
   appliesTo: string[];
+  floorIds: string[];
 }
 interface Floor {
   id: string;
@@ -83,12 +84,10 @@ export default function AssignTaskModal({
     ).then((r) => setCategories(r.categories));
   }, [form.projectId]);
 
-  // Zone filtering: only drawings that apply to the selected floor's type.
+  // Per-floor register: only drawings enabled on the selected floor.
   const floorType = floors.find((f) => f.id === form.floorId)?.floorType;
-  const visibleCategories = floorType
-    ? categories.filter(
-        (c) => c.appliesTo.length === 0 || c.appliesTo.includes(floorType)
-      )
+  const visibleCategories = form.floorId
+    ? categories.filter((c) => c.floorIds?.includes(form.floorId))
     : categories;
 
   useEffect(() => {

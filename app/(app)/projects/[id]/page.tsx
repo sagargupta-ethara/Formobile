@@ -66,6 +66,7 @@ interface Category {
   id: string;
   name: string;
   appliesTo: string[];
+  floorIds: string[];
   discipline: string;
 }
 
@@ -188,12 +189,9 @@ export default function ProjectDetailPage() {
   const topFirst = [...floors].sort((a, b) => b.order - a.order);
   const selectedFloor = project.floors.find((f) => f.id === selected) ?? null;
   const floorTasks = tasks.filter((t) => t.floorId === selected);
-  // the register for the selected floor's zone
+  // the register for the selected floor (its own per-floor drawing list)
   const floorCats = selectedFloor
-    ? cats.filter(
-        (c) =>
-          c.appliesTo.length === 0 || c.appliesTo.includes(selectedFloor.floorType)
-      )
+    ? cats.filter((c) => c.floorIds?.includes(selectedFloor.id))
     : [];
   // department head-tab counts for this floor
   const discCount = (d: string) =>

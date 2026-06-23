@@ -17,6 +17,7 @@ export async function PATCH(
         appliesTo: z
           .array(z.enum(["BASEMENT", "STILT", "FLOOR", "TERRACE"]))
           .optional(),
+        floorIds: z.array(z.string()).optional(),
         discipline: z
           .enum(["INTERIOR", "STRUCTURE", "MEP", "WOODWORK"])
           .optional(),
@@ -41,6 +42,7 @@ export async function PATCH(
             ? undefined
             : data.specializationId || null,
         appliesTo: data.appliesTo,
+        floorIds: data.floorIds,
         discipline: data.discipline,
       },
     });

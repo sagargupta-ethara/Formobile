@@ -31,6 +31,11 @@ export async function DELETE(
   try {
     await requireRole("ADMIN");
     const { id } = await params;
+    // Drop this floor from every drawing's per-floor membership list.
+    await prisma.$runCommandRaw({
+      update: "DesignCategory",
+      updates: [{ q: { floorIds: id }, u: { $pull: { floorIds: id } }, multi: true }],
+    });
     await prisma.floor.delete({ where: { id } });
     return json({ ok: true });
   } catch (e) {

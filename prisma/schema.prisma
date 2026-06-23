@@ -170,7 +170,12 @@ model DesignCategory {
   specializationId String?
   specialization   Specialization? @relation(fields: [specializationId], references: [id], onDelete: SetNull)
   // Floor types this drawing applies to; empty = applies everywhere.
+  // Retained as the DEFAULT rule used to seed per-floor membership on
+  // project create / new-floor add. Actual per-floor enablement now lives
+  // in `floorIds` so each specific floor has its own editable list.
   appliesTo        FloorType[]     @default([])
+  // Specific Floor ids this drawing is enabled on (per-floor register).
+  floorIds         String[]        @default([])
   discipline       Discipline      @default(INTERIOR)
   createdAt        DateTime        @default(now())
 

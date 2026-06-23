@@ -41,6 +41,22 @@ export async function POST(
         order: count,
       },
     });
+    // Auto-populate the new floor with this project's default drawings for its
+    // type: add the floor id to every drawing whose appliesTo rule covers it
+    // (empty rule = applies to all floors).
+    await prisma.$runCommandRaw({
+      update: "DesignCategory",
+      updates: [
+        {
+          q: {
+            projectId: id,
+            $or: [{ appliesTo: { $size: 0 } }, { appliesTo: floor.floorType }],
+          },
+          u: { $addToSet: { floorIds: floor.id } },
+          multi: true,
+        },
+      ],
+    });
     return json({ floor }, 201);
   } catch (e) {
     if (e instanceof z.ZodError)
