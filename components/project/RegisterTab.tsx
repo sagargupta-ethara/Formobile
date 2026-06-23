@@ -145,7 +145,7 @@ export default function RegisterTab({
 
       {/* floor filter chips */}
       <div data-testid="register-floor-chips" style={{ display: "flex", gap: 5, flexWrap: "wrap", margin: "10px 0" }}>
-        {[{ id: "ALL", label: "All" }, ...floors.map((f) => ({ id: f.id, label: floorLabel(f) }))].map((chip) => {
+        {[{ id: "ALL", label: "All" }, ...floors.map((f) => ({ id: f.id, label: f.floorName }))].map((chip) => {
           const active = floorFilter === chip.id;
           return (
             <button

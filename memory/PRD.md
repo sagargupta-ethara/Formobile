@@ -101,6 +101,30 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-22 (Per-floor Drawing Register)
+- **Refactored the Drawing Register from a global floor-TYPE rule to a PER-FLOOR
+  mapping.** Each specific floor (Ground Floor, First Floor, …) now has its own
+  independently-editable list of drawings.
+- **Schema:** added `floorIds String[] @default([])` to `DesignCategory` (kept
+  `appliesTo` as the DEFAULT seeding rule). `prisma db push` applied.
+- **Backfill (`lib/bootstrap.ts`):** idempotent — raw-finds project drawings with
+  `floorIds` field missing (`$exists:false`) and `$set`s computed floorIds from
+  appliesTo vs that project's floors. Verified: 70/70 Test-project drawings populated.
+- **copyTemplateRegister (`lib/projectRegister.ts`):** seeds floorIds from appliesTo
+  against the new project's floors; exports `floorIdsForApplies()`.
+- **New floor add (`POST /api/projects/[id]/floors`):** `$addToSet`s the new floor id
+  into every drawing whose appliesTo covers its type (empty = all) → auto-populates.
+- **Floor delete (`DELETE /api/floors/[id]`):** `$pull`s the id from all drawings.
+- **categories POST/PATCH:** accept `floorIds`.
+- **Frontend:** RegisterTab filter chips are now the project's actual floors
+  (full names: All · Basement · Stilt · Ground Floor · First Floor · …); per-floor
+  Add (DrawingModal floors checklist), per-floor Remove (✕, this-floor-only),
+  bulk "Manage <floor>" checklist (FloorDrawingsModal), and All-view type delete.
+  Building tab `floorCats` and AssignTaskModal `visibleCategories` now filter by
+  `floorIds.includes(floor.id)`. On-Site board unchanged (task-based).
+- **Tested:** testing_agent iteration_3 — 6/6 backend pytest, 100% frontend functional.
+  Regression test at `backend/tests/test_floor_ids.py`. **Requires REDEPLOY for production.**
+
 ## Changelog — 2026-06-19 (UI fixes: naming, spelling, mobile register)
 - **Tab/heading mismatch:** renamed the project tab "Drawing Master" → **"Drawing Register"**
   so it matches its own heading (`projects/[id]/page.tsx`).
