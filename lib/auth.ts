@@ -1,7 +1,7 @@
 import "server-only";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { Role } from "@prisma/client";
 
 const SECRET = new TextEncoder().encode(
@@ -26,13 +26,20 @@ export function verifyPassword(plain: string, hash: string): Promise<boolean> {
   return bcrypt.compare(plain, hash);
 }
 
-export async function createSession(user: SessionUser): Promise<void> {
-  const token = await new SignJWT({ ...user })
+/** Mint a signed session JWT for a user (same token works as a cookie OR as an
+ *  Authorization: Bearer header — used by web and the mobile app respectively). */
+export async function signToken(user: SessionUser): Promise<string> {
+  return new SignJWT({ ...user })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
     .sign(SECRET);
+}
 
+/** Create a web session (sets the httpOnly cookie) and return the raw token so
+ *  callers can also hand it back in the response body for mobile clients. */
+export async function createSession(user: SessionUser): Promise<string> {
+  const token = await signToken(user);
   const store = await cookies();
   store.set(COOKIE, token, {
     httpOnly: true,
@@ -41,6 +48,7 @@ export async function createSession(user: SessionUser): Promise<void> {
     path: "/",
     maxAge: MAX_AGE,
   });
+  return token;
 }
 
 export async function destroySession(): Promise<void> {
@@ -48,10 +56,7 @@ export async function destroySession(): Promise<void> {
   store.delete(COOKIE);
 }
 
-export async function getSession(): Promise<SessionUser | null> {
-  const store = await cookies();
-  const token = store.get(COOKIE)?.value;
-  if (!token) return null;
+async function verifyToken(token: string): Promise<SessionUser | null> {
   try {
     const { payload } = await jwtVerify(token, SECRET);
     return {
@@ -65,3 +70,22 @@ export async function getSession(): Promise<SessionUser | null> {
     return null;
   }
 }
+
+/** Resolve the current session. Reads the httpOnly cookie first (web), then
+ *  falls back to an `Authorization: Bearer <token>` header (mobile app). */
+export async function getSession(): Promise<SessionUser | null> {
+  const store = await cookies();
+  const cookieToken = store.get(COOKIE)?.value;
+  if (cookieToken) {
+    const fromCookie = await verifyToken(cookieToken);
+    if (fromCookie) return fromCookie;
+  }
+
+  const hdrs = await headers();
+  const auth = hdrs.get("authorization") ?? hdrs.get("Authorization");
+  if (auth?.startsWith("Bearer ")) {
+    return verifyToken(auth.slice(7).trim());
+  }
+  return null;
+}
+

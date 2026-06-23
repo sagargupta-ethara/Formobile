@@ -30,8 +30,11 @@ export async function POST(req: Request) {
       role: user.role,
       specializationId: user.specializationId,
     };
-    await createSession(sessionUser);
-    return json({ user: sessionUser });
+    const token = await createSession(sessionUser);
+    // `token` is also returned so non-browser clients (the mobile app) can store
+    // it and send it as `Authorization: Bearer <token>`. Web ignores it and uses
+    // the httpOnly cookie set by createSession().
+    return json({ user: sessionUser, token });
   } catch (e) {
     if (e instanceof z.ZodError)
       return json({ error: "Email and password are required" }, 400);

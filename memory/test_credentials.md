@@ -26,6 +26,17 @@ All seeded users share the password: **`password123`**
 - Production: Emergent-managed Atlas MongoDB, injected via the `MONGO_URL` env var.
 - DB name: `blueprint_flow`. Configured via `MONGO_URL` in `/app/.env` and `/app/backend/.env`.
 
+## Authentication (web + mobile — dual auth, added 2026-06-22)
+- Web: httpOnly cookie `bpf_session` (JWT, HS256, `jose`, 7-day expiry). Unchanged.
+- **Mobile / API clients: `POST /api/auth/login` now also returns `{ user, token }`.**
+  Send that token on every request as `Authorization: Bearer <token>` — the same
+  JWT verifies as either a cookie (web) or a bearer header (mobile). Implemented in
+  `lib/auth.ts` (`signToken`, `createSession` returns token, `getSession` reads cookie
+  then falls back to the Authorization header). No CORS change needed for native
+  (Expo) clients; the FastAPI proxy forwards `Authorization` verbatim.
+- For the mobile app: POST /api/auth/login → store `token` in Expo SecureStore →
+  attach `Authorization: Bearer <token>` to all `/api/*` calls. Same MONGO_URL/DB.
+
 ## Storage
 - Local disk at `/app/storage` (ephemeral on container restart; migrate to object storage for durable prod uploads).
 
