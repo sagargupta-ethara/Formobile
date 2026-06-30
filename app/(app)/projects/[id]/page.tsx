@@ -112,7 +112,7 @@ export default function ProjectDetailPage() {
       setTab("BUILDING");
     }
   }, [search]);
-  const [assign, setAssign] = useState<{ floorId?: string; categoryId?: string } | null>(null);
+  const [assign, setAssign] = useState<{ floorId?: string; categoryId?: string; categoryIds?: string[] } | null>(null);
   const [disc, setDisc] = useState<string>("INTERIOR");
   const [editProject, setEditProject] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -167,6 +167,26 @@ export default function ProjectDetailPage() {
   }
 
   const isAdmin = role === "ADMIN";
+  const isDesigner = role === "DESIGNER";
+
+  async function selfAssign(categoryId: string) {
+    if (!selectedFloor) return;
+    try {
+      await api("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: id,
+          floorId: selectedFloor.id,
+          categoryIds: [categoryId],
+          designerIds: [meId],
+        }),
+      });
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to self-assign");
+    }
+  }
 
   // per-floor status meta for building indicators
   const meta: Record<string, FloorMeta> = {};
@@ -196,7 +216,7 @@ export default function ProjectDetailPage() {
     : [];
   // department head-tab counts for this floor
   const discCount = (d: string) =>
-    isAdmin
+    isAdmin || isDesigner
       ? floorCats.filter((c) => c.discipline === d).length
       : floorTasks.filter((t) => t.category.discipline === d).length;
   const discCats = floorCats.filter((c) => c.discipline === disc);
@@ -571,13 +591,18 @@ export default function ProjectDetailPage() {
                     })}
                   </div>
 
-                  {isAdmin ? (
+                  {isAdmin || isDesigner ? (
                     <FloorRegister
                       cats={discCats}
                       tasks={floorTasks}
+                      mode={isAdmin ? "admin" : "designer"}
                       onAssign={(categoryId) =>
                         setAssign({ floorId: selectedFloor.id, categoryId })
                       }
+                      onBulkAssign={(categoryIds) =>
+                        setAssign({ floorId: selectedFloor.id, categoryIds })
+                      }
+                      onSelfAssign={selfAssign}
                       onEdit={(t) => setEditTask(t)}
                     />
                   ) : discTasks.length === 0 ? (
@@ -605,6 +630,7 @@ export default function ProjectDetailPage() {
           fixedProjectId={project.id}
           fixedFloorId={assign.floorId}
           fixedCategoryId={assign.categoryId}
+          fixedCategoryIds={assign.categoryIds}
           onClose={() => setAssign(null)}
           onCreated={() => {
             setAssign(null);
@@ -651,23 +677,40 @@ export default function ProjectDetailPage() {
   );
 }
 
-/* ----- admin floor view: the full drawing register with assignment state ----- */
+/* ----- admin/designer floor view: the full drawing register ----- */
 function FloorRegister({
   cats,
   tasks,
+  mode,
   onAssign,
+  onBulkAssign,
+  onSelfAssign,
   onEdit,
 }: {
   cats: Category[];
   tasks: Task[];
+  mode: "admin" | "designer";
   onAssign: (categoryId: string) => void;
+  onBulkAssign: (categoryIds: string[]) => void;
+  onSelfAssign: (categoryId: string) => void;
   onEdit: (t: Task) => void;
 }) {
+  const isAdmin = mode === "admin";
   const [q, setQ] = useState(""); // quick filter — registers run 18–41 drawings
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const taskByCat = new Map<string, Task>();
   for (const t of tasks) taskByCat.set(t.category.id, t);
 
   const shown = cats.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+
+  function toggleSel(id: string) {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div>
@@ -678,27 +721,71 @@ function FloorRegister({
         onChange={(e) => setQ(e.target.value)}
         style={{ marginBottom: 10 }}
       />
+      {isAdmin && selected.size > 0 && (
+        <div
+          data-testid="bulk-assign-bar"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            marginBottom: 10,
+            padding: "0.55rem 0.8rem",
+            borderRadius: 9,
+            background: "#1e293b",
+            color: "#fff",
+          }}
+        >
+          <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>
+            {selected.size} drawing{selected.size === 1 ? "" : "s"} selected
+          </span>
+          <span style={{ display: "flex", gap: 6 }}>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: "0.76rem", padding: "0.32rem 0.6rem", background: "rgba(255,255,255,0.12)", color: "#fff", border: "none" }}
+              onClick={() => setSelected(new Set())}
+            >
+              Clear
+            </button>
+            <button
+              className="btn btn-primary"
+              data-testid="bulk-assign-confirm"
+              style={{ fontSize: "0.76rem", padding: "0.32rem 0.7rem" }}
+              onClick={() => onBulkAssign([...selected])}
+            >
+              <Plus size={13} /> Assign selected
+            </button>
+          </span>
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 520, overflowY: "auto", paddingRight: 4 }}>
         {shown.map((c) => {
           const t = taskByCat.get(c.id);
-          const cd =
-            t && (t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED") && t.deadline
-              ? null
-              : null;
-          void cd;
+          const checked = selected.has(c.id);
           return (
             <div
               key={c.id}
+              data-testid={`floor-register-row-${c.id}`}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
                 padding: "0.55rem 0.7rem",
-                border: "1px solid #eef2f7",
+                border: "1px solid",
+                borderColor: checked ? "#1d4ed8" : "#eef2f7",
                 borderRadius: 9,
-                background: t ? "#fff" : "#fafcfe",
+                background: checked ? "#eff6ff" : t ? "#fff" : "#fafcfe",
               }}
             >
+              {isAdmin && !t && (
+                <input
+                  type="checkbox"
+                  data-testid={`bulk-select-${c.id}`}
+                  checked={checked}
+                  onChange={() => toggleSel(c.id)}
+                  style={{ width: 16, height: 16, flexShrink: 0, cursor: "pointer" }}
+                />
+              )}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: "0.84rem", fontWeight: 600, color: t ? "#1e293b" : "#64748b" }}>
                   {c.name}
@@ -720,23 +807,25 @@ function FloorRegister({
               {t ? (
                 <span style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                   <StatusBadge status={t.status} />
-                  <button
-                    onClick={() => onEdit(t)}
-                    title="Edit task"
-                    style={{
-                      border: "1px solid var(--color-line)",
-                      background: "#fff",
-                      borderRadius: 7,
-                      width: 27,
-                      height: 27,
-                      display: "grid",
-                      placeItems: "center",
-                      cursor: "pointer",
-                      color: "#64748b",
-                    }}
-                  >
-                    <Pencil size={13} />
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => onEdit(t)}
+                      title="Edit task"
+                      style={{
+                        border: "1px solid var(--color-line)",
+                        background: "#fff",
+                        borderRadius: 7,
+                        width: 27,
+                        height: 27,
+                        display: "grid",
+                        placeItems: "center",
+                        cursor: "pointer",
+                        color: "#64748b",
+                      }}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  )}
                   <Link
                     href={`/tasks/${t.id}`}
                     title="Open task"
@@ -754,13 +843,22 @@ function FloorRegister({
                     <ArrowUpRight size={13} />
                   </Link>
                 </span>
-              ) : (
+              ) : isAdmin ? (
                 <button
                   className="btn btn-ghost"
                   style={{ fontSize: "0.76rem", padding: "0.38rem 0.7rem", flexShrink: 0 }}
                   onClick={() => onAssign(c.id)}
                 >
                   <Plus size={13} /> Assign
+                </button>
+              ) : (
+                <button
+                  className="btn btn-ghost"
+                  data-testid={`self-assign-${c.id}`}
+                  style={{ fontSize: "0.76rem", padding: "0.38rem 0.7rem", flexShrink: 0 }}
+                  onClick={() => onSelfAssign(c.id)}
+                >
+                  <Plus size={13} /> Assign to me
                 </button>
               )}
             </div>

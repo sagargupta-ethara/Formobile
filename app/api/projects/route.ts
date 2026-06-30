@@ -36,25 +36,24 @@ export async function GET() {
     // reviewers see projects with designs routed to their specialization;
     // admins see everything. Task counts are scoped the same way.
     let taskFilter: Prisma.DesignTaskWhereInput | undefined;
-    if (user.role === "DESIGNER") {
-      taskFilter = { designerId: user.id };
-    } else if (user.role === "ONSITE") {
-      // generalists (no specialization, e.g. Site Heads) see every project
-      // that has tasks; specialists see projects with work routed to them
+    let projectWhere: Prisma.ProjectWhereInput | undefined;
+    if (user.role === "ONSITE") {
+      // generalists (no specialization) see every project with reviewable work;
+      // specialists see projects with work routed to them (per-task routing).
       taskFilter = user.specializationId
         ? {
-            category: {
-              OR: [
-                { specializationId: null },
-                { specializationId: user.specializationId },
-              ],
-            },
+            OR: [
+              { specializationId: null },
+              { specializationId: user.specializationId },
+            ],
           }
         : {};
+      projectWhere = { tasks: { some: taskFilter } };
     }
+    // ADMIN and DESIGNER see all projects (designers self-serve / self-assign).
 
     const projects = await prisma.project.findMany({
-      where: taskFilter ? { tasks: { some: taskFilter } } : undefined,
+      where: projectWhere,
       include: {
         _count: {
           select: {

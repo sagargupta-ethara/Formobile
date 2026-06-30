@@ -5,17 +5,12 @@ import { Plus, Pencil, Trash2, X, Layers } from "lucide-react";
 import { api, Badge, Skeleton, Modal, ErrorText } from "@/components/ui";
 import Select from "@/components/Select";
 
-interface Spec {
-  id: string;
-  name: string;
-}
 interface Category {
   id: string;
   name: string;
   appliesTo: string[];
   floorIds: string[];
   discipline: string;
-  specialization: { id: string; name: string } | null;
 }
 interface Floor {
   id: string;
@@ -42,7 +37,6 @@ export default function RegisterTab({
   isAdmin: boolean;
 }) {
   const [cats, setCats] = useState<Category[] | null>(null);
-  const [specs, setSpecs] = useState<Spec[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [floorFilter, setFloorFilter] = useState("ALL"); // "ALL" or a floor id
   const [editing, setEditing] = useState<Category | null>(null);
@@ -50,13 +44,11 @@ export default function RegisterTab({
   const [managing, setManaging] = useState(false);
 
   const load = useCallback(async () => {
-    const [c, s, f] = await Promise.all([
+    const [c, f] = await Promise.all([
       api<{ categories: Category[] }>(`/api/categories?projectId=${projectId}`),
-      api<{ specializations: Spec[] }>("/api/specializations"),
       api<{ floors: Floor[] }>(`/api/projects/${projectId}/floors`),
     ]);
     setCats(c.categories);
-    setSpecs(s.specializations);
     setFloors([...f.floors].sort((a, b) => a.order - b.order));
   }, [projectId]);
 
@@ -193,9 +185,6 @@ export default function RegisterTab({
                   {c.floorIds?.length ?? 0} {(c.floorIds?.length ?? 0) === 1 ? "floor" : "floors"}
                 </span>
               )}
-              {c.specialization && (
-                <Badge bg="#eef2ff" fg="#4338ca">{c.specialization.name}</Badge>
-              )}
               {isAdmin && (
                 <>
                   <button
@@ -243,7 +232,6 @@ export default function RegisterTab({
         <DrawingModal
           projectId={projectId}
           category={editing}
-          specs={specs}
           floors={floors}
           defaultFloorId={creating && selectedFloor ? selectedFloor.id : undefined}
           onClose={() => {
@@ -289,7 +277,6 @@ const iconBtn: React.CSSProperties = {
 function DrawingModal({
   projectId,
   category,
-  specs,
   floors,
   defaultFloorId,
   onClose,
@@ -297,7 +284,6 @@ function DrawingModal({
 }: {
   projectId: string;
   category: Category | null;
-  specs: Spec[];
   floors: Floor[];
   defaultFloorId?: string;
   onClose: () => void;
@@ -305,7 +291,6 @@ function DrawingModal({
 }) {
   const editing = !!category;
   const [name, setName] = useState(category?.name ?? "");
-  const [specId, setSpecId] = useState(category?.specialization?.id ?? "");
   const [floorIds, setFloorIds] = useState<string[]>(
     category?.floorIds ?? (defaultFloorId ? [defaultFloorId] : [])
   );
@@ -328,7 +313,6 @@ function DrawingModal({
         body: JSON.stringify({
           name,
           projectId,
-          specializationId: specId || null,
           floorIds,
           discipline,
         }),
@@ -361,18 +345,6 @@ function DrawingModal({
               value={discipline}
               onChange={setDiscipline}
               options={DISCIPLINES.map((d) => ({ value: d.key, label: d.label }))}
-            />
-          </div>
-          <div>
-            <label className="label">Routes to Team</label>
-            <Select
-              value={specId}
-              onChange={setSpecId}
-              placeholder="No team (everyone reviews)"
-              options={[
-                { value: "", label: "No team (everyone reviews)" },
-                ...specs.map((s) => ({ value: s.id, label: s.name })),
-              ]}
             />
           </div>
           <div>

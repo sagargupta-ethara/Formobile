@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { ApiError, fail, json, requireRole, requireUser } from "@/lib/api";
+import { ApiError, fail, json, requireUser } from "@/lib/api";
 import { audit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { fmtDateTime } from "@/lib/format";
@@ -12,6 +12,7 @@ const listInclude = {
   category: {
     select: { id: true, name: true, specializationId: true, discipline: true },
   },
+  specialization: { select: { id: true, name: true } },
   designer: { select: { id: true, name: true } },
   reviewer: { select: { id: true, name: true } },
   assignees: { select: { user: { select: { id: true, name: true } } } },
@@ -28,12 +29,7 @@ export async function GET(req: Request) {
 
     let where: Prisma.DesignTaskWhereInput = {};
 
-    if (user.role === "DESIGNER") {
-      where.OR = [
-        { designerId: user.id },
-        { assignees: { some: { userId: user.id } } },
-      ];
-    } else if (user.role === "ONSITE") {
+    if (user.role === "ONSITE") {
       // their own review queue + their own uploads + (when no dedicated
       // reviewer is set) anything routed to their trade / to generalists.
       // Spec-routed tasks must be in a reviewable state — ASSIGNED tasks
@@ -47,12 +43,10 @@ export async function GET(req: Request) {
           status: { in: ["PENDING_REVIEW", "REVISION_SUBMITTED"] },
           ...(user.specializationId
             ? {
-                category: {
-                  OR: [
-                    { specializationId: null },
-                    { specializationId: user.specializationId },
-                  ],
-                },
+                OR: [
+                  { specializationId: null },
+                  { specializationId: user.specializationId },
+                ],
               }
             : {}),
         },
@@ -76,30 +70,44 @@ export async function GET(req: Request) {
 const createSchema = z.object({
   projectId: z.string().min(1),
   floorId: z.string().min(1),
-  categoryId: z.string().min(1),
+  categoryId: z.string().min(1).optional(),
+  categoryIds: z.array(z.string().min(1)).min(1).optional(),
   // one or more team members (possibly from different departments)
   designerIds: z.array(z.string().min(1)).min(1).optional(),
   designerId: z.string().min(1).optional(), // legacy single-assignee
   reviewerId: z.string().optional().nullable(),
+  specializationId: z.string().optional().nullable(),
   deadline: z.string().optional().nullable(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
 });
 
-// POST /api/tasks — admin assigns a design task (the assignment engine)
+// POST /api/tasks — admin assigns a design task (the assignment engine).
+// Designers may self-assign (only to themselves) in projects they belong to.
 export async function POST(req: Request) {
   try {
-    const admin = await requireRole("ADMIN");
+    const me = await requireUser();
+    if (me.role === "ONSITE")
+      throw new ApiError(403, "On-site reviewers cannot create tasks");
     const data = createSchema.parse(await req.json());
 
-    const assigneeIds = [
+    const isSelfAssign = me.role === "DESIGNER";
+    let assigneeIds = [
       ...new Set(data.designerIds ?? (data.designerId ? [data.designerId] : [])),
     ];
+    if (isSelfAssign) assigneeIds = [me.id]; // designers can only assign to themselves
     if (assigneeIds.length === 0)
       throw new ApiError(400, "Pick at least one team member to assign");
 
-    const [floor, category, assignees, reviewer] = await Promise.all([
+    // one or more drawing types (bulk assign)
+    const categoryIds = [
+      ...new Set(data.categoryIds ?? (data.categoryId ? [data.categoryId] : [])),
+    ];
+    if (categoryIds.length === 0)
+      throw new ApiError(400, "Pick at least one drawing type");
+
+    const [floor, categories, assignees, reviewer] = await Promise.all([
       prisma.floor.findUnique({ where: { id: data.floorId } }),
-      prisma.designCategory.findUnique({ where: { id: data.categoryId } }),
+      prisma.designCategory.findMany({ where: { id: { in: categoryIds } } }),
       prisma.user.findMany({ where: { id: { in: assigneeIds } } }),
       data.reviewerId
         ? prisma.user.findUnique({ where: { id: data.reviewerId } })
@@ -107,8 +115,11 @@ export async function POST(req: Request) {
     ]);
     if (!floor || floor.projectId !== data.projectId)
       throw new ApiError(400, "Floor does not belong to the selected project");
-    if (!category || (category.projectId && category.projectId !== data.projectId))
-      throw new ApiError(400, "Drawing type does not belong to this project");
+    if (
+      categories.length !== categoryIds.length ||
+      categories.some((c) => c.projectId && c.projectId !== data.projectId)
+    )
+      throw new ApiError(400, "A drawing type does not belong to this project");
     if (
       assignees.length !== assigneeIds.length ||
       assignees.some((a) => a.role === "ADMIN" || a.status !== "ACTIVE")
@@ -126,44 +137,56 @@ export async function POST(req: Request) {
       });
     }
 
-    const task = await prisma.designTask.create({
-      data: {
-        projectId: data.projectId,
-        floorId: data.floorId,
-        categoryId: data.categoryId,
-        designerId: assigneeIds[0],
-        reviewerId: data.reviewerId || null,
-        assignees: { create: assigneeIds.map((userId) => ({ userId })) },
-        deadline: data.deadline ? new Date(data.deadline) : null,
-        priority: data.priority ?? "MEDIUM",
-        status: "ASSIGNED",
-      },
-      include: listInclude,
-    });
-    await audit({
-      entityType: "DesignTask",
-      entityId: task.id,
-      action: "TASK_ASSIGNED",
-      detail: `${task.category.name} · ${task.floor.floorName} → ${task.designer?.name}`,
-      performedById: admin.id,
-    });
-    await notify(assigneeIds, {
-      type: "ASSIGNED",
-      title: `New task — ${task.category.name}`,
-      body: `${task.project.name} · ${task.floor.floorName}${
-        task.deadline ? ` · due ${fmtDateTime(task.deadline)}` : ""
-      }`,
-      link: `/tasks/${task.id}`,
-    });
-    if (task.reviewer) {
-      await notify([task.reviewer.id], {
+    const created = [];
+    for (const categoryId of categoryIds) {
+      // skip a drawing on this floor that's already assigned
+      const existing = await prisma.designTask.findFirst({
+        where: { projectId: data.projectId, floorId: data.floorId, categoryId },
+      });
+      if (existing) continue;
+      const task = await prisma.designTask.create({
+        data: {
+          projectId: data.projectId,
+          floorId: data.floorId,
+          categoryId,
+          specializationId: data.specializationId || null,
+          designerId: assigneeIds[0],
+          reviewerId: data.reviewerId || null,
+          assignees: { create: assigneeIds.map((userId) => ({ userId })) },
+          deadline: data.deadline ? new Date(data.deadline) : null,
+          priority: data.priority ?? "MEDIUM",
+          status: "ASSIGNED",
+        },
+        include: listInclude,
+      });
+      created.push(task);
+      await audit({
+        entityType: "DesignTask",
+        entityId: task.id,
+        action: "TASK_ASSIGNED",
+        detail: `${task.category.name} · ${task.floor.floorName} → ${task.designer?.name}`,
+        performedById: me.id,
+      });
+      await notify(assigneeIds, {
         type: "ASSIGNED",
-        title: `You will review — ${task.category.name}`,
-        body: `${task.project.name} · ${task.floor.floorName}. You'll have 24h to approve or reject once it's uploaded.`,
+        title: `New task — ${task.category.name}`,
+        body: `${task.project.name} · ${task.floor.floorName}${
+          task.deadline ? ` · due ${fmtDateTime(task.deadline)}` : ""
+        }`,
         link: `/tasks/${task.id}`,
       });
+      if (task.reviewer) {
+        await notify([task.reviewer.id], {
+          type: "ASSIGNED",
+          title: `You will review — ${task.category.name}`,
+          body: `${task.project.name} · ${task.floor.floorName}. You'll have 24h to approve or reject once it's uploaded.`,
+          link: `/tasks/${task.id}`,
+        });
+      }
     }
-    return json({ task }, 201);
+    if (created.length === 0)
+      throw new ApiError(409, "Those drawings are already assigned on this floor");
+    return json({ tasks: created, task: created[0] }, 201);
   } catch (e) {
     if (e instanceof z.ZodError)
       return json({ error: e.errors[0]?.message ?? "Invalid input" }, 400);

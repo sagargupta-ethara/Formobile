@@ -28,12 +28,14 @@ export default function AssignTaskModal({
   fixedProjectId,
   fixedFloorId,
   fixedCategoryId,
+  fixedCategoryIds,
   onClose,
   onCreated,
 }: {
   fixedProjectId?: string;
   fixedFloorId?: string;
   fixedCategoryId?: string;
+  fixedCategoryIds?: string[];
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -41,14 +43,18 @@ export default function AssignTaskModal({
   const [floors, setFloors] = useState<Floor[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
+  const [specs, setSpecs] = useState<Opt[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const bulk = (fixedCategoryIds?.length ?? 0) > 0;
 
   const [form, setForm] = useState({
     projectId: fixedProjectId ?? "",
     floorId: fixedFloorId ?? "",
     categoryId: fixedCategoryId ?? "",
     reviewerId: "",
+    specializationId: "",
     deadline: "",
   });
   // one or more team members, possibly from different departments
@@ -63,7 +69,8 @@ export default function AssignTaskModal({
         ? Promise.resolve({ projects: [] })
         : api<{ projects: Opt[] }>("/api/projects"),
       api<{ users: Person[] }>("/api/users?assignable=1"),
-    ]).then(([p, u]) => {
+      api<{ specializations: Opt[] }>("/api/specializations"),
+    ]).then(([p, u, s]) => {
       setProjects(p.projects);
       // sort team members alphabetically by name (designer/reviewer dropdowns)
       setPeople(
@@ -71,6 +78,7 @@ export default function AssignTaskModal({
           a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
         )
       );
+      setSpecs(s.specializations);
     });
   }, [fixedProjectId]);
 
@@ -112,7 +120,7 @@ export default function AssignTaskModal({
     if (
       !form.projectId ||
       !form.floorId ||
-      !form.categoryId ||
+      (!bulk && !form.categoryId) ||
       assignees.length === 0 ||
       !form.reviewerId
     ) {
@@ -123,10 +131,19 @@ export default function AssignTaskModal({
     }
     setSaving(true);
     try {
+      const categoryIds = bulk ? fixedCategoryIds : [form.categoryId];
       await api("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, designerIds: assignees }),
+        body: JSON.stringify({
+          projectId: form.projectId,
+          floorId: form.floorId,
+          reviewerId: form.reviewerId,
+          specializationId: form.specializationId || null,
+          deadline: form.deadline,
+          categoryIds,
+          designerIds: assignees,
+        }),
       });
       onCreated();
     } catch (e) {
@@ -170,19 +187,39 @@ export default function AssignTaskModal({
           </div>
           <div>
             <label className="label">Drawing Type *</label>
-            <Select
-              value={form.categoryId}
-              onChange={(v) => set("categoryId", v)}
-              placeholder={form.floorId ? "Select drawing…" : "Pick a floor first…"}
-              disabled={!form.floorId || !!fixedCategoryId}
-              searchable
-              options={visibleCategories.map((c) => ({ value: c.id, label: c.name }))}
-            />
-            {floorType && !fixedCategoryId && (
-              <p style={{ fontSize: "0.72rem", color: "#94a3b8", margin: "5px 0 0" }}>
-                {visibleCategories.length} drawing types for this{" "}
-                {floorType.toLowerCase()} level
-              </p>
+            {bulk ? (
+              <div
+                data-testid="bulk-assign-banner"
+                style={{
+                  border: "1px solid var(--color-line)",
+                  borderRadius: 9,
+                  padding: "0.6rem 0.75rem",
+                  background: "#eff6ff",
+                  color: "#1d4ed8",
+                  fontSize: "0.84rem",
+                  fontWeight: 600,
+                }}
+              >
+                Assigning {fixedCategoryIds!.length} selected drawing
+                {fixedCategoryIds!.length === 1 ? "" : "s"} together
+              </div>
+            ) : (
+              <>
+                <Select
+                  value={form.categoryId}
+                  onChange={(v) => set("categoryId", v)}
+                  placeholder={form.floorId ? "Select drawing…" : "Pick a floor first…"}
+                  disabled={!form.floorId || !!fixedCategoryId}
+                  searchable
+                  options={visibleCategories.map((c) => ({ value: c.id, label: c.name }))}
+                />
+                {floorType && !fixedCategoryId && (
+                  <p style={{ fontSize: "0.72rem", color: "#94a3b8", margin: "5px 0 0" }}>
+                    {visibleCategories.length} drawing types for this{" "}
+                    {floorType.toLowerCase()} level
+                  </p>
+                )}
+              </>
             )}
           </div>
           <div>
@@ -263,6 +300,21 @@ export default function AssignTaskModal({
             />
             <p style={{ fontSize: "0.7rem", color: "#94a3b8", margin: "5px 0 0" }}>
               Has 24h to approve or reject after each upload.
+            </p>
+          </div>
+          <div>
+            <label className="label">Route to Team</label>
+            <Select
+              value={form.specializationId}
+              onChange={(v) => set("specializationId", v)}
+              placeholder="No team (everyone reviews)"
+              options={[
+                { value: "", label: "No team (everyone reviews)" },
+                ...specs.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
+            <p style={{ fontSize: "0.7rem", color: "#94a3b8", margin: "5px 0 0" }}>
+              Routes this drawing to a trade team when no reviewer acts.
             </p>
           </div>
           <div>

@@ -91,6 +91,7 @@ model Specialization {
   name       String           @unique
   users      User[]
   categories DesignCategory[]
+  tasks      DesignTask[]
   createdAt  DateTime         @default(now())
 }
 
@@ -193,6 +194,10 @@ model DesignTask {
   floor       Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
   categoryId  String
   category    DesignCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // Per-task review routing (the "Route to Team" chosen at assignment time).
+  // Replaces the old per-drawing-type routing on DesignCategory.
+  specializationId String?
+  specialization   Specialization? @relation(fields: [specializationId], references: [id], onDelete: SetNull)
   designerId  String?
   designer    User?      @relation("designer", fields: [designerId], references: [id], onDelete: SetNull)
   // the off-site person responsible for reviewing this drawing within the SLA

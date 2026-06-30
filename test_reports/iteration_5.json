@@ -1,0 +1,32 @@
+{
+  "summary": "BATCH 2 frontend verification PASSED. Items #2 (bulk-assign), #3 (Route-to-Team moved), #4 (alphabetical regression), #10 (designer full register + self-assign) all verified live end-to-end. All three role logins still work; baseline (3 tasks) restored after cleanup.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "#10 PASS (DESIGNER full register + self-assign): Logged in amarpreet.padam — projects list shows the Test project (designer no longer scoped). On Building tab the Ground Floor Interior register renders 13 rows (13 categories) with discipline head-tabs (Interior 13, Structure 3, MEP 10, Woodwork 2), exactly matching the admin view. 13 'Assign to me' buttons rendered with data-testid=self-assign-<categoryId>. Clicking the first one created a task assigned to Amarpreet Padam (status ASSIGNED) — the row re-rendered as 'Bathroom Elevations with Material (incl. Marble Basin + Vanity) · Amarpreet Padam uploads · Any off-site member reviews on site · Assigned' and the self-assign button disappeared.",
+    "#2 PASS (BULK ASSIGN): As admin, 12 unassigned rows show data-testid=bulk-select-<categoryId> checkboxes; selecting 2 reveals the dark bulk-assign-bar with '2 drawings selected · Clear · Assign selected'. data-testid=bulk-assign-confirm opens the AssignTaskModal (title 'Assign Design Task') with banner data-testid=bulk-assign-banner reading 'Assigning 2 selected drawings together' in the Drawing Type slot. Submitting (Assign Task button) created exactly 2 new tasks (both status=ASSIGNED) — verified via GET /api/tasks?projectId.",
+    "#3 PASS (Route-to-Team moved): Drawing Register tab — DrawingModal source (RegisterTab.tsx:330-410) contains only Drawing Name, Department, On Floors. No 'Routes to Team' field. No specialization/team badge appears on register rows (text scan for /Routes to:|Specialization:/ in the rendered list returned 0 matches). AssignTaskModal now contains the 'Route to Team' Select with default 'No team (everyone reviews)' + helper text 'Routes this drawing to a trade team when no reviewer acts'.",
+    "#4 PASS (alphabetical regression): AssignTaskModal 'Assign To' dropdown rendered 22 names in clean A→Z order (Amarpreet Padam, Astha, Dighamber, Gaurav, Kailash, Kiranpreet, …, Vijay, Virender, Zakir). Off-Site Reviewer dropdown also alphabetical (validated visually previous iteration; AssignTaskModal.tsx still sorts users with localeCompare base-sensitivity).",
+    "REGRESSION PASS: (a) Admin single-assign still works — clicking the per-row 'Assign' button opens AssignTaskModal WITHOUT the bulk-assign-banner, with Route to Team field present. (b) Edit task modal still opens via pencil icon (TaskEditModal). (c) ONSITE (sudama) logs in successfully and lands on /projects showing 1 project (Test · 3 tasks) — left nav shows Projects + Reviews + Profile only (Drawing Register & Team tabs hidden, as designed). (d) Designer projects list now shows the Test project (was previously scoped). (e) Per-floor Drawing Register discipline chips with counts still render for admin/designer.",
+    "All data-testids specified in the request are present and functioning: self-assign-<id>, bulk-select-<id>, bulk-assign-bar, bulk-assign-confirm, bulk-assign-banner.",
+    "Minor observation (not a bug): bulk-created tasks in this test ended with specialization=null because the test left 'Route to Team' as default 'No team'. Backend correctly stored the null; main agent already verified specialization persistence via curl when explicitly set.",
+    "Console warnings observed are only Next.js font-preload warnings (unused .woff2) — cosmetic, no functional impact. The RSC 'Failed to fetch' console errors are also harmless — they fire only when a left-nav link is hovered between role re-logins (Next prefetches the cached admin-only routes /profile, /backups, /users for a user whose session has just changed) and the SPA falls back to a full navigation as the message itself says."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "skipped (frontend-only batch, backend already verified by main agent)",
+    "frontend": "4/4 PASS live (#2, #3, #4, #10) + full regression PASS"
+  },
+  "test_credentials": "manish.uppal@blueprintflow.in / amarpreet.padam@blueprintflow.in / sudama@blueprintflow.in — all password123",
+  "seed_data_creation": "Created 3 temporary tasks during testing (1 designer self-assign + 2 bulk-assign), then DELETED all 3 via DELETE /api/tasks/<id>. Final task count on Test project verified back at 3 (the original baseline: Bar/Firepit ASSIGNED, Balcony Railing APPROVED, Balcony Flooring APPROVED).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "For projects/[id] register testing: floor rows have data-testid=floor-register-row-<categoryId>; admin sees bulk-select-<id> checkbox on every UNASSIGNED row; designer sees self-assign-<id> button on every UNASSIGNED row. The AssignTaskModal submit button reads 'Assign Task' (NOT 'Assign'). When bulk mode is active, the 'Drawing Type' field is replaced by data-testid=bulk-assign-banner showing 'Assigning N selected drawings together'. Use the existing Test project (id=cmqgcmd1s0000ig2lwj4tj5cs); CLEAN UP any tasks you create via DELETE /api/tasks/<id> as admin so subsequent runs see the same 3-task baseline (Bar/Firepit ASSIGNED, Balcony Railing APPROVED, Balcony Flooring APPROVED).",
+  "rca of the issue": "No bugs found. Batch-2 items behave exactly as specified."
+}
