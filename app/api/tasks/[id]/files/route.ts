@@ -30,8 +30,6 @@ export async function POST(
       task.assignees.some((a) => a.userId === user.id);
     if (user.role !== "ADMIN" && !isAssignee)
       throw new ApiError(403, "This task is not assigned to you");
-    if (task.status === "APPROVED")
-      throw new ApiError(409, "This design is already approved");
 
     const form = await req.formData();
     const file = form.get("file");

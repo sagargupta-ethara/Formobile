@@ -221,8 +221,7 @@ export default function TaskDetailPage() {
 
             {(role === "DESIGNER" ||
               task.designer?.id === meId ||
-              task.assignees.some((a) => a.user.id === meId)) &&
-              task.status !== "APPROVED" && (
+              task.assignees.some((a) => a.user.id === meId)) && (
                 <UploadBox taskId={task.id} onDone={load} status={task.status} />
               )}
           </div>
@@ -507,7 +506,11 @@ function UploadBox({
       }}
     >
       <div style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: 8 }}>
-        {status === "REJECTED" ? "Upload Revised Design" : "Upload Design"}
+        {status === "REJECTED"
+          ? "Upload Revised Design"
+          : status === "APPROVED"
+          ? "Replace Approved Design"
+          : "Upload Design"}
       </div>
       <ErrorText>{error}</ErrorText>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

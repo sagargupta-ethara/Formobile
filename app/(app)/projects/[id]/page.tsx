@@ -867,7 +867,7 @@ function TaskActionRow({
           </button>
         ) : role === "DESIGNER" ? (
           <>
-            {task.status !== "APPROVED" && (
+            {(
               <>
                 <input
                   ref={fileRef}
@@ -896,7 +896,11 @@ function TaskActionRow({
                   onClick={() => fileRef.current?.click()}
                 >
                   {busy ? <span className="spinner" /> : <Upload size={task.status === "REJECTED" ? 16 : 14} />}
-                  {task.status === "REJECTED" ? "Upload Revision Now" : "Add Design"}
+                  {task.status === "REJECTED"
+                    ? "Upload Revision Now"
+                    : task.status === "APPROVED"
+                    ? "Replace Drawing"
+                    : "Add Design"}
                 </button>
               </>
             )}

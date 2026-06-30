@@ -101,6 +101,28 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-23 (14-item change request — Batch 1 of 3)
+Delivered & tested (testing_agent iteration_4 — frontend pass, no regressions):
+- **#4** Assign-task designer/reviewer dropdowns sorted alphabetically (`AssignTaskModal.tsx`).
+- **#5 + #13** Advanced filters on `/tasks` (Project · Floor · Discipline · Person · Overdue-only + Clear),
+  available to all roles incl. ONSITE Reviews (`app/(app)/tasks/page.tsx`). Status pills retained.
+- **#6** "Specialization" field hidden on New User (shown only when editing) (`users/page.tsx`).
+- **#7** Department option "Architecture · Structure" → "Architecture".
+- **#14 + #1(partial)** Rejected upload made prominent: red pulsing "Upload Revision Now" button +
+  "Changes requested" banner (`projects/[id]/page.tsx`, `pulseUpload` keyframes in globals.css);
+  per-task red "Overdue" badge on `/tasks`. (#14/#1 code-verified — seed had no rejected/overdue rows.)
+- **#11** Drawings replaceable in ANY state incl. APPROVED (removed the APPROVED upload guard in
+  `api/tasks/[id]/files`; UI labels: "Replace Drawing"/"Replace Approved Design"; new version → re-review).
+
+### Remaining (Batch 2/3 — NOT yet started):
+- **#1** Project-level "Breach Timeline" view (chronological list of SLA/deadline breaches).
+- **#2** Multi-select drawings → bulk-assign to one person.
+- **#3** Move "Route to Team" out of Drawing Register into the Assign tab (needs `DesignTask.specializationId` + onsite scoping update).
+- **#8** Admin project-wise drawing backup → downloadable ZIP (all versions).
+- **#9** Notifications upgrade: toast/banner on new notification + dedicated Notifications page.
+- **#10** Designers see all drawings in their projects + self-assign (always-on) (scoping in `/api/tasks`, `/api/projects`, allow DESIGNER POST /api/tasks).
+- **#12** Whisper transcription for rejection voice notes (needs integration_expert + Emergent Universal Key).
+
 ## Changelog — 2026-06-22 (Per-floor Drawing Register)
 - **Refactored the Drawing Register from a global floor-TYPE rule to a PER-FLOOR
   mapping.** Each specific floor (Ground Floor, First Floor, …) now has its own
