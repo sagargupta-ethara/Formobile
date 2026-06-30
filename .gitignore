@@ -11,3 +11,9 @@ test_credentials.md
 
 # database backup archives (durable copy lives in the DB)
 /backups
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
