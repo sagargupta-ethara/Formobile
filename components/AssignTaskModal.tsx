@@ -65,7 +65,12 @@ export default function AssignTaskModal({
       api<{ users: Person[] }>("/api/users?assignable=1"),
     ]).then(([p, u]) => {
       setProjects(p.projects);
-      setPeople(u.users);
+      // sort team members alphabetically by name (designer/reviewer dropdowns)
+      setPeople(
+        [...u.users].sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+        )
+      );
     });
   }, [fixedProjectId]);
 

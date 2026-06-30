@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration-4 verified BATCH 1 (frontend-only) — items #4, #5, #6, #7, #13 PASS end-to-end. #1 and #14 are CODE-VERIFIED only because the seed has no overdue tasks and no REJECTED tasks at the moment, so the badge / red 'Upload Revision Now' button & rejected-banner could not be observed live. All three roles logged in successfully; Projects list, project Building tab and Drawing Register tab render with zero error elements, ONSITE board (only tab shown to ONSITE role) renders cleanly.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Verification gap, not a bug) Seed at least one REJECTED task on the Test project so #14 (red 'Upload Revision Now' button + rejected-banner + pulseUpload animation) can be observed live next iteration. Source confirms the conditional renders: data-testid='rejected-banner' (projects/[id]/page.tsx:838), data-testid='designer-upload-btn' with animation:'pulseUpload 1.8s ease-in-out infinite' (line 891), and text 'Upload Revision Now' when status===REJECTED else 'Add Design' (line 899). Keyframes pulseUpload exist in globals.css:643.",
+    "(Verification gap) Seed an overdue task (reviewDueAt or deadline in the past, not Approved) so the overdue-badge-<taskId> is visible. The isOverdue() helper and data-testid wiring are correct in tasks/page.tsx:82-88 and 358-374, but ADMIN /tasks currently shows 0 overdue badges among 3 tasks because none are overdue."
+  ],
+  "critical_code_review_comments": [
+    "#4 PASS: AssignTaskModal sorts u.users alphabetically with localeCompare base-sensitivity (line ~69-73). Verified live: 'Assign To' returned 22 names A→Z (Amarpreet Padam … Zakir); 'Off-Site Reviewer' returned 15 names A→Z (Dighamber … Zakir).",
+    "#5 PASS: tasks-filters-toggle reveals tasks-filter-panel containing Project / Floor / Discipline / Person Selects, plus tasks-overdue-toggle and (when active) tasks-filters-clear. Verified: panel hidden by default → visible after toggle; Overdue-only narrows rows + badge counts consistent; Clear resets all and rows return to original count; status pills (All/Assigned/Pending Review/Approved/Rejected) coexist with advanced filters.",
+    "#13 PASS: ONSITE on /tasks: h1='Reviews', tasks-filters-toggle present, panel reveals Discipline dropdown (showed 'All disciplines','Interior Design' - the only discipline routed to this onsite reviewer).",
+    "#6 PASS: New User dialog does NOT render the Specialization field (users/page.tsx:288 wraps it in `{editing && ...}`). Edit dialog correctly shows Specialization (verified visually in screenshot for 'Edit — Salman': NAME, EMAIL, PHONE, ROLE, DEPARTMENT, SPECIALIZATION, RESET PASSWORD).",
+    "#7 PASS: Department dropdown options are exactly ['Interior Design','Architecture','Site Head','Site Supervisor','Carpentry','MEP · Plumbing','MEP · Electrical','MEP · HVAC','Admin'] — no 'Architecture · Structure'.",
+    "#1 CODE-VERIFIED: isOverdue() correctly checks reviewDueAt for PENDING_REVIEW/REVISION_SUBMITTED and deadline otherwise (excludes APPROVED). data-testid=`overdue-badge-${t.id}` rendered before StatusBadge. Could not be observed live (no overdue rows in current seed).",
+    "#14 CODE-VERIFIED: TaskActionRow shows red animated button 'Upload Revision Now' + rejected-banner when status===REJECTED, else 'Add Design'. No REJECTED tasks in current data — designer (amarpreet.padam) has 0 tasks on the Test project, ADMIN's /tasks Rejected pill shows 0 rows globally.",
+    "REGRESSION PASS: All three role logins succeed via Sign in button (note: NOT type='submit' — uses get_by_role). ADMIN: Building, Drawing Register, Team tabs present on project page, no .error elements after switching tabs. DESIGNER: Building tab present on project page (Drawing Register intentionally hidden — designer-only view). ONSITE: only On-Site tab present on project page (Building/Drawing Register intentionally hidden), Projects list h1='Projects' with 0 errors.",
+    "Selector note for future tests: Login submit button has no type='submit' attribute — must be clicked via get_by_role('button', name='Sign in'). Custom Select component (components/Select.tsx) renders the trigger as <button class='input'> and options as portaled <button class='row-link'>; do NOT use [role='option']."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "skipped (frontend-only batch)",
+    "frontend": "5/7 PASS live (#4,#5,#6,#7,#13), 2/7 CODE-VERIFIED only (#1,#14) due to missing seed data; REGRESSION PASS"
+  },
+  "test_credentials": "manish.uppal@blueprintflow.in / amarpreet.padam@blueprintflow.in / sudama@blueprintflow.in — all password123",
+  "seed_data_creation": "None — read-only verification. No data created or modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login submit button is NOT type='submit'; use get_by_role('button', name='Sign in'). The custom Select component portals its options as button.row-link (not [role='option']). Trigger is button.input — locate via :has-text(placeholder). The dialog/modal is NOT [role='dialog'] — query by .modal or by inner-text containing 'Department'+'Password'. To make #1 and #14 fully verifiable, seed one task with deadline in the past (not APPROVED) and one task with status='REJECTED' assigned to amarpreet.padam on the Test project. Test project id: cmqgcmd1s0000ig2lwj4tj5cs; floor ids documented in iteration-3 report.",
+  "rca of the issue": "No bugs. #1 and #14 markup/logic are present and correct in source; they couldn't be observed at runtime only because the seed currently contains 0 overdue tasks and 0 REJECTED tasks. Main agent should seed those edge-case fixtures to enable end-to-end visual verification."
+}

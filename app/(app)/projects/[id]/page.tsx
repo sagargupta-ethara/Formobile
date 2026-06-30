@@ -18,6 +18,7 @@ import {
   Users,
   History,
   Settings2,
+  RotateCcw,
 } from "lucide-react";
 import {
   api,
@@ -832,6 +833,27 @@ function TaskActionRow({
 
       <ErrorText>{error}</ErrorText>
 
+      {role === "DESIGNER" && task.status === "REJECTED" && (
+        <div
+          data-testid="rejected-banner"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 10,
+            padding: "0.55rem 0.7rem",
+            borderRadius: 9,
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            color: "#b91c1c",
+            fontSize: "0.8rem",
+            fontWeight: 600,
+          }}
+        >
+          <RotateCcw size={15} /> Changes requested — upload a revised drawing.
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         {role === "ONSITE" ? (
           /* on-site: open the drawing first; approve / reject live inside it */
@@ -856,12 +878,25 @@ function TaskActionRow({
                 />
                 <button
                   className="btn btn-primary"
-                  style={{ fontSize: "0.8rem" }}
+                  data-testid="designer-upload-btn"
+                  style={
+                    task.status === "REJECTED"
+                      ? {
+                          fontSize: "0.85rem",
+                          fontWeight: 700,
+                          background: "linear-gradient(180deg,#ef4444,#dc2626)",
+                          border: "none",
+                          padding: "0.6rem 1rem",
+                          boxShadow: "0 6px 16px -6px rgba(220,38,38,0.6)",
+                          animation: "pulseUpload 1.8s ease-in-out infinite",
+                        }
+                      : { fontSize: "0.8rem" }
+                  }
                   disabled={busy}
                   onClick={() => fileRef.current?.click()}
                 >
-                  {busy ? <span className="spinner" /> : <Upload size={14} />}
-                  {task.status === "REJECTED" ? "Upload Revision" : "Add Design"}
+                  {busy ? <span className="spinner" /> : <Upload size={task.status === "REJECTED" ? 16 : 14} />}
+                  {task.status === "REJECTED" ? "Upload Revision Now" : "Add Design"}
                 </button>
               </>
             )}

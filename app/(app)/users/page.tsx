@@ -274,7 +274,7 @@ function UserModal({
               creatable
               options={[
                 "Interior Design",
-                "Architecture · Structure",
+                "Architecture",
                 "Site Head",
                 "Site Supervisor",
                 "Carpentry",
@@ -285,17 +285,19 @@ function UserModal({
               ].map((d) => ({ value: d, label: d }))}
             />
           </Field>
-          <Field label="Specialization">
-            <Select
-              value={form.specializationId}
-              onChange={(v) => set("specializationId", v)}
-              placeholder="None"
-              options={[
-                { value: "", label: "None" },
-                ...specs.map((s) => ({ value: s.id, label: s.name })),
-              ]}
-            />
-          </Field>
+          {editing && (
+            <Field label="Specialization">
+              <Select
+                value={form.specializationId}
+                onChange={(v) => set("specializationId", v)}
+                placeholder="None"
+                options={[
+                  { value: "", label: "None" },
+                  ...specs.map((s) => ({ value: s.id, label: s.name })),
+                ]}
+              />
+            </Field>
+          )}
           <Field label={editing ? "Reset Password" : "Password *"}>
             <input
               className="input"

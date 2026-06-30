@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, ChevronRight, Clock, CalendarDays } from "lucide-react";
+import { Plus, ChevronRight, Clock, CalendarDays, SlidersHorizontal, X, AlertTriangle } from "lucide-react";
 import {
   api,
   PageHeader,
@@ -12,6 +12,7 @@ import {
   StatusBadge,
   TaskPeople,
 } from "@/components/ui";
+import Select from "@/components/Select";
 import { Stagger, Item } from "@/components/motion";
 import AssignTaskModal from "@/components/AssignTaskModal";
 import { fmtDateTime, countdown } from "@/lib/format";
@@ -24,11 +25,18 @@ interface Task {
   floorId: string;
   project: { id: string; name: string; code: string };
   floor: { floorName: string };
-  category: { name: string };
-  designer: { name: string } | null;
-  reviewer?: { name: string } | null;
+  category: { name: string; discipline?: string };
+  designer: { id?: string; name: string } | null;
+  reviewer?: { id: string; name: string } | null;
   assignees?: { user: { id: string; name: string } }[];
 }
+
+const DISCIPLINE_LABEL: Record<string, string> = {
+  INTERIOR: "Interior Design",
+  STRUCTURE: "Structure",
+  MEP: "MEP",
+  WOODWORK: "Woodwork",
+};
 
 const FILTERS = [
   { key: "ALL", label: "All" },
@@ -43,6 +51,13 @@ export default function TasksPage() {
   const [role, setRole] = useState("");
   const [filter, setFilter] = useState("ALL");
   const [assignOpen, setAssignOpen] = useState(false);
+  // advanced filters
+  const [projectF, setProjectF] = useState("");
+  const [floorF, setFloorF] = useState("");
+  const [discF, setDiscF] = useState("");
+  const [personF, setPersonF] = useState("");
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   async function load() {
     const [t, me] = await Promise.all([
@@ -56,11 +71,56 @@ export default function TasksPage() {
     load();
   }, []);
 
-  const filtered = (tasks ?? []).filter((t) => {
-    if (filter === "ALL") return true;
-    if (filter === "PENDING")
-      return t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED";
-    return t.status === filter;
+  const all = tasks ?? [];
+  const now = Date.now();
+  function personIds(t: Task): string[] {
+    const ids = (t.assignees?.map((a) => a.user.id) ?? []) as string[];
+    if (t.designer?.id) ids.push(t.designer.id);
+    if (t.reviewer?.id) ids.push(t.reviewer.id);
+    return ids;
+  }
+  function isOverdue(t: Task): boolean {
+    const pending = t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED";
+    if (pending && t.reviewDueAt) return new Date(t.reviewDueAt).getTime() < now;
+    if (t.deadline && t.status !== "APPROVED")
+      return new Date(t.deadline).getTime() < now;
+    return false;
+  }
+
+  // option lists derived from the loaded tasks
+  const projectOpts = [...new Map(all.map((t) => [t.project.id, t.project.name])).entries()]
+    .map(([id, name]) => ({ value: id, label: name }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const floorOpts = [...new Set(all.map((t) => t.floor.floorName))]
+    .map((n) => ({ value: n, label: n }));
+  const discOpts = [...new Set(all.map((t) => t.category.discipline).filter(Boolean) as string[])]
+    .map((d) => ({ value: d, label: DISCIPLINE_LABEL[d] ?? d }));
+  const personOpts = [
+    ...new Map(
+      all.flatMap((t) => [
+        ...(t.assignees?.map((a) => [a.user.id, a.user.name] as const) ?? []),
+        ...(t.designer?.id ? [[t.designer.id, t.designer.name] as const] : []),
+        ...(t.reviewer?.id ? [[t.reviewer.id, t.reviewer.name] as const] : []),
+      ])
+    ).entries(),
+  ]
+    .map(([id, name]) => ({ value: id, label: name }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const activeAdvanced =
+    !!projectF || !!floorF || !!discF || !!personF || overdueOnly;
+
+  const filtered = all.filter((t) => {
+    if (filter === "PENDING") {
+      if (!(t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED"))
+        return false;
+    } else if (filter !== "ALL" && t.status !== filter) return false;
+    if (projectF && t.project.id !== projectF) return false;
+    if (floorF && t.floor.floorName !== floorF) return false;
+    if (discF && t.category.discipline !== discF) return false;
+    if (personF && !personIds(t).includes(personF)) return false;
+    if (overdueOnly && !isOverdue(t)) return false;
+    return true;
   });
 
   const title =
@@ -136,6 +196,95 @@ export default function TasksPage() {
         })}
       </div>
 
+      {/* advanced filters */}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          data-testid="tasks-filters-toggle"
+          onClick={() => setShowAdvanced((s) => !s)}
+          className="btn btn-ghost"
+          style={{ fontSize: "0.8rem", padding: "0.4rem 0.7rem" }}
+        >
+          <SlidersHorizontal size={14} /> Filters
+          {activeAdvanced && (
+            <span
+              className="mono"
+              style={{
+                marginLeft: 6,
+                background: "#1e293b",
+                color: "#fff",
+                borderRadius: 999,
+                fontSize: "0.62rem",
+                padding: "0.05rem 0.4rem",
+              }}
+            >
+              on
+            </span>
+          )}
+        </button>
+
+        {showAdvanced && (
+          <div
+            data-testid="tasks-filter-panel"
+            className="card"
+            style={{ marginTop: 8, padding: "0.9rem 1rem", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}
+          >
+            <div style={{ minWidth: 160, flex: "1 1 160px" }}>
+              <label className="label">Project</label>
+              <Select value={projectF} onChange={setProjectF} placeholder="All projects" searchable
+                options={[{ value: "", label: "All projects" }, ...projectOpts]} />
+            </div>
+            <div style={{ minWidth: 140, flex: "1 1 140px" }}>
+              <label className="label">Floor</label>
+              <Select value={floorF} onChange={setFloorF} placeholder="All floors"
+                options={[{ value: "", label: "All floors" }, ...floorOpts]} />
+            </div>
+            <div style={{ minWidth: 140, flex: "1 1 140px" }}>
+              <label className="label">Discipline</label>
+              <Select value={discF} onChange={setDiscF} placeholder="All disciplines"
+                options={[{ value: "", label: "All disciplines" }, ...discOpts]} />
+            </div>
+            <div style={{ minWidth: 160, flex: "1 1 160px" }}>
+              <label className="label">Person</label>
+              <Select value={personF} onChange={setPersonF} placeholder="Anyone" searchable
+                options={[{ value: "", label: "Anyone" }, ...personOpts]} />
+            </div>
+            <button
+              data-testid="tasks-overdue-toggle"
+              onClick={() => setOverdueOnly((o) => !o)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                border: "1px solid",
+                borderColor: overdueOnly ? "#b91c1c" : "var(--color-line)",
+                background: overdueOnly ? "#fee2e2" : "#fff",
+                color: overdueOnly ? "#b91c1c" : "#64748b",
+                borderRadius: 999,
+                padding: "0.5rem 0.8rem",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                height: 40,
+              }}
+            >
+              <AlertTriangle size={14} /> Overdue only
+            </button>
+            {activeAdvanced && (
+              <button
+                data-testid="tasks-filters-clear"
+                onClick={() => {
+                  setProjectF(""); setFloorF(""); setDiscF(""); setPersonF(""); setOverdueOnly(false);
+                }}
+                className="btn btn-ghost"
+                style={{ fontSize: "0.78rem", padding: "0.45rem 0.7rem", height: 40 }}
+              >
+                <X size={14} /> Clear
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {!tasks ? (
         <Skeleton />
       ) : filtered.length === 0 ? (
@@ -205,7 +354,25 @@ export default function TasksPage() {
                       </span>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
+                    {isOverdue(t) && (
+                      <span
+                        data-testid={`overdue-badge-${t.id}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 3,
+                          fontSize: "0.66rem",
+                          fontWeight: 700,
+                          padding: "0.1rem 0.4rem",
+                          borderRadius: 999,
+                          background: "#fee2e2",
+                          color: "#b91c1c",
+                        }}
+                      >
+                        <AlertTriangle size={10} /> Overdue
+                      </span>
+                    )}
                     <StatusBadge status={t.status} />
                   </div>
                   <ChevronRight size={16} color="#cbd5e1" />
