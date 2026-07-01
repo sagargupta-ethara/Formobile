@@ -101,6 +101,15 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Hotfix v2 — 2026-06-24 (PROD 502 on /api — FastAPI crashing at startup)
+- **Real root cause (found by probing prod directly):** production `/login` returned 200 but `/api/*` returned **HTTP 502** → the **FastAPI backend (:8001) was crashing at startup in production**, so the login POST hit Cloudflare's 502 HTML page = "Unexpected token '<'". (The earlier requirements.txt trim was necessary but not sufficient.)
+- **Culprit:** the `/internal/transcribe` route used FastAPI `File()/UploadFile`, which requires **python-multipart at import time**; if that dep isn't present in the prod build, `uvicorn server:app` fails to boot → all `/api` 502.
+- **Fix (preview, needs REDEPLOY):**
+  - Rewrote `/internal/transcribe` to read `await request.body()` (raw bytes + `x-audio-filename` header) — no `File()`, no python-multipart dependency.
+  - `server.py` now imports only `fastapi` + `httpx` (both in base image) + optional `dotenv`; **backend boots even if `requirements.txt` is ignored**.
+  - `app/api/transcribe/route.ts` forwards raw audio bytes; `requirements.txt` = fastapi/uvicorn/httpx/python-dotenv only.
+- **Verified:** testing_agent iteration_8 — 21/21 backend, 3/3 roles login/session/logout, `/api` always JSON, Whisper still works via raw-body path.
+
 ## Hotfix — 2026-06-24 (PROD login broken: "Unexpected token '<'")
 - **Symptom:** Production login returned an HTML page instead of JSON → the FastAPI proxy (:8001) was down in prod, so every `/api/*` (incl. login) hit an HTML error page.
 - **Root cause:** the `backend/requirements.txt` created in the previous session listed **`emergentintegrations`** (very large tree, needs the Emergent extra index) → clean production build failed/timed out → backend never started. Preview was unaffected (library was already in the pod).
