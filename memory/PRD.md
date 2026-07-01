@@ -101,7 +101,17 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
-## Changelog — 2026-06-23 (14-item change request — Batches 2 & 3 COMPLETE)
+## Hotfix — 2026-06-24 (PROD login broken: "Unexpected token '<'")
+- **Symptom:** Production login returned an HTML page instead of JSON → the FastAPI proxy (:8001) was down in prod, so every `/api/*` (incl. login) hit an HTML error page.
+- **Root cause:** the `backend/requirements.txt` created in the previous session listed **`emergentintegrations`** (very large tree, needs the Emergent extra index) → clean production build failed/timed out → backend never started. Preview was unaffected (library was already in the pod).
+- **Fix (preview, needs REDEPLOY):**
+  - Trimmed `backend/requirements.txt` → `fastapi, uvicorn, httpx, python-multipart, python-dotenv` (removed emergentintegrations + pymongo).
+  - `server.py`: optional `dotenv` import (try/except); `/internal/transcribe` lazily imports emergentintegrations and returns 503 if unavailable → backend always starts.
+  - Renamed Whisper key `EMERGENT_LLM_KEY` → `WHISPER_LLM_KEY` in `backend/.env` so it no longer leaks into the Next env (via start.js merge) and flip file-storage to object store.
+- **Impact on #12 (Whisper) in prod:** transcription works only where `emergentintegrations` is present in the runtime; otherwise it degrades gracefully (voice memo still attaches, 503 on transcribe). To enable it reliably in prod, install emergentintegrations in the deploy runtime.
+- **Verified:** testing_agent iteration_7 — 17/17 backend, 3/3 roles full login/session/logout flow, all `/api` return JSON.
+
+
 **Batch 2** (tested, iteration_5 — 4/4 pass):
 - **#2** Multi-select drawings → bulk-assign to one person (admin FloorRegister checkboxes + `bulk-assign-bar`; `AssignTaskModal` `fixedCategoryIds`; POST /api/tasks accepts `categoryIds[]`).
 - **#3** "Route to Team" moved from Drawing Register → Assign modal (added `DesignTask.specializationId`; onsite scoping now per-task; register no longer shows/sets routing).
