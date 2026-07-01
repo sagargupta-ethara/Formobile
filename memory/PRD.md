@@ -101,6 +101,23 @@ instruction (feature work, bug fix, or deployment hardening).
   Post-deploy notes: run `prisma db push` against Atlas for unique indexes; disk
   uploads (`/app/storage`) are ephemeral → move to object storage for durable prod.
 
+## Changelog — 2026-06-23 (14-item change request — Batches 2 & 3 COMPLETE)
+**Batch 2** (tested, iteration_5 — 4/4 pass):
+- **#2** Multi-select drawings → bulk-assign to one person (admin FloorRegister checkboxes + `bulk-assign-bar`; `AssignTaskModal` `fixedCategoryIds`; POST /api/tasks accepts `categoryIds[]`).
+- **#3** "Route to Team" moved from Drawing Register → Assign modal (added `DesignTask.specializationId`; onsite scoping now per-task; register no longer shows/sets routing).
+- **#10** Designers see ALL projects/drawings + self-assign (always-on): `/api/projects` & `/api/tasks` broadened for DESIGNER; POST /api/tasks lets a designer self-assign (forces assignee=self, auto-joins project); Building tab shows full register with "Assign to me".
+
+**Batch 3** (tested, iteration_6 — #1/#8/#9 live pass, #12 API-verified + UI-present):
+- **#1** Project "Breach Timeline" tab — chronological list of review-SLA / deadline misses, oldest first, with how-late + status (`BreachTimeline`). Per-task Overdue badge shipped in Batch 1.
+- **#8** Admin "Backup Drawings" → `GET /api/projects/[id]/backup` streams a ZIP (JSZip) of every uploaded drawing file (all versions), organised `Floor/Drawing/vN-file`. Header button `backup-drawings-btn` (admin-only).
+- **#9** Notifications upgrade — sonner `<Toaster/>` app-wide + toast on newly-arrived notifications; dedicated `/notifications` page (filter chips, mark-all-read); "Notifications" sidebar item for all roles; bell "View all" footer. `GET /api/notifications?all=1`.
+- **#12** Whisper voice-note transcription — `backend/server.py` `/internal/transcribe` (OpenAISpeechToText, whisper-1, EMERGENT_LLM_KEY) called by authenticated Next `POST /api/transcribe`; `VoiceRecorder` "Transcribe to text" button prefills the rejection reason. Verified via curl end-to-end.
+
+### PRODUCTION REDEPLOY NOTES
+- `backend/requirements.txt` was created (fastapi/uvicorn/httpx/python-multipart/python-dotenv/pymongo/**emergentintegrations**). Prod build must install these (emergentintegrations needs the Emergent extra index).
+- `EMERGENT_LLM_KEY` added to `backend/.env` (Python/Whisper only). Next.js storage backend unchanged (still local-disk in preview) — set EMERGENT_LLM_KEY in the Next env separately to activate object storage.
+- Prisma: `DesignTask.specializationId` added (db push applied; MongoDB optional field — no migration blocker).
+
 ## Changelog — 2026-06-23 (14-item change request — Batch 1 of 3)
 Delivered & tested (testing_agent iteration_4 — frontend pass, no regressions):
 - **#4** Assign-task designer/reviewer dropdowns sorted alphabetically (`AssignTaskModal.tsx`).
