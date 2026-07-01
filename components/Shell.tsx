@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Toaster } from "sonner";
 import {
   FolderKanban,
   ListChecks,
@@ -14,6 +15,7 @@ import {
   UserCircle,
   Menu,
   X,
+  Bell,
   DatabaseBackup,
 } from "lucide-react";
 import { Avatar } from "@/components/ui";
@@ -32,23 +34,27 @@ type NavItem = { href: string; label: string; icon: React.ReactNode };
 function navFor(role: Role): NavItem[] {
   const I = { width: 18, height: 18 } as const;
   const profile = { href: "/profile", label: "Profile", icon: <UserCircle {...I} /> };
+  const notifications = { href: "/notifications", label: "Notifications", icon: <Bell {...I} /> };
   if (role === "ADMIN")
     return [
       { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
       { href: "/tasks", label: "Design Tasks", icon: <ListChecks {...I} /> },
       { href: "/users", label: "Team", icon: <Users {...I} /> },
       { href: "/backups", label: "Backups", icon: <DatabaseBackup {...I} /> },
+      notifications,
       profile,
     ];
   if (role === "DESIGNER")
     return [
       { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
       { href: "/tasks", label: "My Tasks", icon: <ListChecks {...I} /> },
+      notifications,
       profile,
     ];
   return [
     { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
     { href: "/tasks", label: "Reviews", icon: <ListChecks {...I} /> },
+    notifications,
     profile,
   ];
 }
@@ -108,6 +114,7 @@ export default function Shell({
 
   return (
     <div className="app-shell">
+      <Toaster position="top-right" richColors closeButton />
       {drawer && <div className="app-overlay" onClick={() => setDrawer(false)} />}
 
       {/* ---------------- Sidebar ---------------- */}

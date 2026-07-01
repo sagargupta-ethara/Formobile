@@ -9,11 +9,13 @@ import {
   Trash2,
   ArrowUpRight,
   Upload,
+  Download,
   Check,
   MousePointerClick,
   ArrowUpDown,
   Pencil,
   Building2,
+  AlertTriangle,
   BarChart3,
   Users,
   History,
@@ -55,6 +57,7 @@ interface Task {
   id: string;
   status: string;
   deadline: string | null;
+  reviewDueAt?: string | null;
   floorId: string;
   designerId?: string | null;
   floor: { floorName: string };
@@ -86,6 +89,7 @@ function ordinal(n: number): string {
 
 const TABS = [
   { key: "BUILDING", label: "Building", icon: <Building2 size={15} /> },
+  { key: "BREACHES", label: "Breach Timeline", icon: <AlertTriangle size={15} /> },
   { key: "ANALYTICS", label: "Analytics", icon: <BarChart3 size={15} /> },
   { key: "TEAM", label: "Team", icon: <Users size={15} /> },
   { key: "REVISIONS", label: "Revisions", icon: <History size={15} /> },
@@ -305,6 +309,14 @@ export default function ProjectDetailPage() {
               <button className="btn btn-ghost" onClick={() => setEditProject(true)}>
                 <Pencil size={15} /> Edit Project
               </button>
+              <a
+                className="btn btn-ghost"
+                data-testid="backup-drawings-btn"
+                href={`/api/projects/${project.id}/backup`}
+                title="Download all drawing files as a ZIP"
+              >
+                <Download size={15} /> Backup Drawings
+              </a>
               <button
                 className="btn btn-primary"
                 onClick={() => setAssign({ floorId: selectedFloor?.id })}
@@ -375,6 +387,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {isAdmin && tab === "ANALYTICS" && <AnalyticsTab projectId={project.id} />}
+      {isAdmin && tab === "BREACHES" && <BreachTimeline tasks={tasks} />}
       {tab === "TEAM" && <TeamTab projectId={project.id} isAdmin={isAdmin} />}
       {isAdmin && tab === "REVISIONS" && <RevisionsTab projectId={project.id} />}
       {isAdmin && tab === "SETTINGS" && <RegisterTab projectId={project.id} isAdmin />}
@@ -674,6 +687,106 @@ export default function ProjectDetailPage() {
         />
       )}
     </>
+  );
+}
+
+/* ----- project-level breach timeline (SLA + deadline misses) ----- */
+function BreachTimeline({ tasks }: { tasks: Task[] }) {
+  const now = Date.now();
+  type Breach = {
+    id: string;
+    kind: "REVIEW" | "DEADLINE";
+    at: number;
+    task: Task;
+  };
+  const breaches: Breach[] = [];
+  for (const t of tasks) {
+    const pending = t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED";
+    if (pending && t.reviewDueAt && new Date(t.reviewDueAt).getTime() < now) {
+      breaches.push({ id: `${t.id}-r`, kind: "REVIEW", at: new Date(t.reviewDueAt).getTime(), task: t });
+    }
+    if (t.deadline && t.status !== "APPROVED" && new Date(t.deadline).getTime() < now) {
+      breaches.push({ id: `${t.id}-d`, kind: "DEADLINE", at: new Date(t.deadline).getTime(), task: t });
+    }
+  }
+  breaches.sort((a, b) => a.at - b.at); // oldest breach first
+
+  function lateBy(ms: number): string {
+    const h = Math.floor((now - ms) / 3_600_000);
+    if (h < 24) return `${Math.max(1, h)}h late`;
+    const d = Math.floor(h / 24);
+    return `${d}d ${h % 24}h late`;
+  }
+
+  return (
+    <div className="card" style={{ padding: "1.2rem" }} data-testid="breach-timeline">
+      <div style={{ fontWeight: 700 }}>
+        Breach Timeline
+        <span className="mono" style={{ fontWeight: 500, color: "#94a3b8", fontSize: "0.78rem", marginLeft: 8 }}>
+          {breaches.length}
+        </span>
+      </div>
+      <p style={{ fontSize: "0.8rem", color: "#94a3b8", margin: "2px 0 14px" }}>
+        Tasks that missed their 24h review SLA or their design deadline, oldest first.
+      </p>
+      {breaches.length === 0 ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#15803d", fontSize: "0.86rem", fontWeight: 600 }}>
+          <Check size={16} /> No breaches — everything is on track.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {breaches.map((b) => (
+            <Link
+              key={b.id}
+              href={`/tasks/${b.task.id}`}
+              data-testid={`breach-row-${b.task.id}`}
+              className="row-link"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "0.7rem 0.85rem",
+                borderRadius: 10,
+                border: "1px solid #fee2e2",
+                background: "#fff",
+                borderLeft: "4px solid #dc2626",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "0.62rem",
+                  fontWeight: 800,
+                  letterSpacing: "0.05em",
+                  padding: "0.2rem 0.5rem",
+                  borderRadius: 999,
+                  background: b.kind === "REVIEW" ? "#fef3c7" : "#fee2e2",
+                  color: b.kind === "REVIEW" ? "#b45309" : "#b91c1c",
+                  flexShrink: 0,
+                }}
+              >
+                {b.kind === "REVIEW" ? "REVIEW SLA" : "DEADLINE"}
+              </span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: "block", fontSize: "0.86rem", fontWeight: 700, color: "#1e293b" }}>
+                  {b.task.category.name}
+                </span>
+                <span style={{ display: "block", fontSize: "0.75rem", color: "#94a3b8" }}>
+                  {b.task.floor.floorName}
+                  {b.task.designer ? ` · ${b.task.designer.name}` : ""}
+                  {b.task.reviewer ? ` · reviewer ${b.task.reviewer.name}` : ""}
+                </span>
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#dc2626" }}>
+                  {lateBy(b.at)}
+                </span>
+                <StatusBadge status={b.task.status} />
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

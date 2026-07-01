@@ -283,6 +283,9 @@ export default function DrawingReviewModal({
                       />
                       <VoiceRecorder
                         onChange={setVoice}
+                        onTranscribed={(text) =>
+                          setComments((c) => (c.trim() ? `${c.trim()} ${text}` : text))
+                        }
                         onUnavailable={() => {
                           setMicFailed(true);
                           setError("");

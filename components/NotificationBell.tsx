@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell, Check, Upload, X as XIcon, AlertTriangle, ListChecks, Clock } from "lucide-react";
 
@@ -41,13 +42,27 @@ export default function NotificationBell() {
   const [items, setItems] = useState<Notif[]>([]);
   const [unread, setUnread] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const seenRef = useRef<Set<string>>(new Set());
+  const primedRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications");
       if (!res.ok) return;
       const d = await res.json();
-      setItems(d.notifications ?? []);
+      const list: Notif[] = d.notifications ?? [];
+      // toast any brand-new unread notifications that arrived since last poll
+      // (skip the very first load so we don't replay the whole history)
+      if (primedRef.current) {
+        for (const n of list) {
+          if (!seenRef.current.has(n.id) && !n.readAt) {
+            toast(n.title, { description: n.body ?? undefined });
+          }
+        }
+      }
+      for (const n of list) seenRef.current.add(n.id);
+      primedRef.current = true;
+      setItems(list);
       setUnread(d.unread ?? 0);
     } catch {
       /* offline — ignore */
@@ -270,6 +285,26 @@ export default function NotificationBell() {
                 );
               })}
             </div>
+            <button
+              onClick={() => {
+                setOpen(false);
+                router.push("/notifications");
+              }}
+              data-testid="view-all-notifications"
+              style={{
+                width: "100%",
+                border: "none",
+                borderTop: "1px solid #f1f5f9",
+                background: "#fff",
+                color: "#2563eb",
+                fontSize: "0.78rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                padding: "0.7rem 1rem",
+              }}
+            >
+              View all notifications
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

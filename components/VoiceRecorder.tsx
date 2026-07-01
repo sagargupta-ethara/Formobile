@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Mic, Square, Trash2 } from "lucide-react";
+import { Mic, Square, Trash2, FileText } from "lucide-react";
 
 const MAX_SECONDS = 5 * 60; // PRD: 5 minute cap
 
@@ -36,18 +36,41 @@ export function recorderSupported(): boolean {
 export default function VoiceRecorder({
   onChange,
   onUnavailable,
+  onTranscribed,
 }: {
   onChange: (file: File | null) => void;
   /** Called when recording turns out to be impossible (no mic / permission denied). */
   onUnavailable?: () => void;
+  /** When provided, a "Transcribe" button appears after recording; it sends the
+   *  audio to Whisper and returns the text (e.g. to prefill the reason box). */
+  onTranscribed?: (text: string) => void;
 }) {
   const [state, setState] = useState<"idle" | "recording" | "done" | "denied">("idle");
   const [seconds, setSeconds] = useState(0);
   const [url, setUrl] = useState<string | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
+  const fileRef = useRef<File | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const extRef = useRef("webm");
+
+  async function transcribe() {
+    if (!fileRef.current || !onTranscribed) return;
+    setTranscribing(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", fileRef.current);
+      const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Transcription failed");
+      onTranscribed(d.text || "");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Transcription failed");
+    } finally {
+      setTranscribing(false);
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -77,6 +100,7 @@ export default function VoiceRecorder({
         const file = new File([blob], `voice-note.${extRef.current}`, {
           type: blob.type,
         });
+        fileRef.current = file;
         setUrl((old) => {
           if (old) URL.revokeObjectURL(old);
           return URL.createObjectURL(blob);
@@ -208,6 +232,19 @@ export default function VoiceRecorder({
           <span className="mono" style={{ fontSize: "0.78rem", color: "#64748b" }}>
             {mm}:{ss}
           </span>
+          {onTranscribed && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              data-testid="voice-transcribe-btn"
+              onClick={transcribe}
+              disabled={transcribing}
+              style={{ padding: "0.45rem 0.7rem" }}
+            >
+              {transcribing ? <span className="spinner" /> : <FileText size={14} />}
+              {transcribing ? "Transcribing…" : "Transcribe to text"}
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-ghost"

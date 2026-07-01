@@ -7,9 +7,13 @@ serves its API routes from Next.js itself, this thin proxy bridges the two.
 from __future__ import annotations
 
 import os
+import io
+import tempfile
 import httpx
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import StreamingResponse
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, Response, UploadFile, File, HTTPException
+
+load_dotenv()
 
 NEXT_ORIGIN = os.environ.get("NEXT_ORIGIN", "http://127.0.0.1:3000")
 
@@ -45,6 +49,42 @@ async def _shutdown() -> None:
 @app.get("/healthz")
 async def healthz() -> dict:
     return {"ok": True}
+
+
+# Internal-only (localhost) Whisper transcription. The Next.js /api/transcribe
+# route authenticates the user and forwards the audio here. Not exposed through
+# the ingress (which only routes /api/* to this service), so it's server-to-server.
+@app.post("/internal/transcribe")
+async def transcribe(file: UploadFile = File(...)) -> dict:
+    from emergentintegrations.llm.openai import OpenAISpeechToText
+
+    key = os.environ.get("EMERGENT_LLM_KEY")
+    if not key:
+        raise HTTPException(status_code=503, detail="Transcription not configured")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty audio")
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Audio too large (max 25MB)")
+
+    suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(data)
+            tmp_path = tmp.name
+        stt = OpenAISpeechToText(api_key=key)
+        with open(tmp_path, "rb") as audio_file:
+            resp = await stt.transcribe(
+                file=audio_file, model="whisper-1", response_format="json"
+            )
+        return {"text": getattr(resp, "text", "") or ""}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Transcription failed: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 @app.api_route(

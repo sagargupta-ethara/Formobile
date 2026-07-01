@@ -90,17 +90,19 @@ async function warnApproachingDeadlines() {
 }
 
 // GET /api/notifications — latest feed + unread count for the bell.
-export async function GET() {
+// `?all=1` returns a larger history for the dedicated notifications page.
+export async function GET(req: Request) {
   try {
     const user = await requireUser();
     await escalateOverdueReviews();
     await warnApproachingDeadlines();
 
+    const all = new URL(req.url).searchParams.get("all") === "1";
     const [notifications, unread] = await Promise.all([
       prisma.notification.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: "desc" },
-        take: 15,
+        take: all ? 200 : 15,
       }),
       prisma.notification.count({
         where: { userId: user.id, readAt: null },
