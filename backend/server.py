@@ -7,13 +7,16 @@ serves its API routes from Next.js itself, this thin proxy bridges the two.
 from __future__ import annotations
 
 import os
-import io
 import tempfile
 import httpx
-from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Response, UploadFile, File, HTTPException
 
-load_dotenv()
+try:  # optional in some runtimes; env vars may be injected directly
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:  # noqa: BLE001
+    pass
 
 NEXT_ORIGIN = os.environ.get("NEXT_ORIGIN", "http://127.0.0.1:3000")
 
@@ -56,11 +59,13 @@ async def healthz() -> dict:
 # the ingress (which only routes /api/* to this service), so it's server-to-server.
 @app.post("/internal/transcribe")
 async def transcribe(file: UploadFile = File(...)) -> dict:
-    from emergentintegrations.llm.openai import OpenAISpeechToText
-
-    key = os.environ.get("EMERGENT_LLM_KEY")
+    key = os.environ.get("WHISPER_LLM_KEY") or os.environ.get("EMERGENT_LLM_KEY")
     if not key:
         raise HTTPException(status_code=503, detail="Transcription not configured")
+    try:
+        from emergentintegrations.llm.openai import OpenAISpeechToText
+    except Exception:  # library not available in this environment
+        raise HTTPException(status_code=503, detail="Transcription unavailable")
 
     data = await file.read()
     if not data:

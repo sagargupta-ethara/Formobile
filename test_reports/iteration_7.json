@@ -1,0 +1,31 @@
+{
+  "summary": "Post-fix regression PASSED. The requirements.txt trim (removal of emergentintegrations) + optional dotenv + lazy Whisper import + WHISPER_LLM_KEY rename did NOT break preview. FastAPI proxy is healthy, /api/auth/login returns application/json (200) for all three roles, sessions persist via bpf_session cookie, /api/auth/me works via both cookie and Bearer, logout+re-login works, and all role landing endpoints return JSON (never HTML). 17/17 pytest cases pass; full 3-role Playwright UI flow (login → refresh → landing pages → logout → login-redirect) passes end-to-end.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Production redeploy still required to apply the requirements.txt fix on floor-planning-stage.emergent.host — user action, not code change. Preview is confirmed healthy so the same code will fix prod once deployed."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py — clean, minimal proxy. Optional dotenv import + lazy Whisper import mean the process can start even when heavy Whisper deps are missing, which is exactly what prevented the prod outage.",
+    "backend/requirements.txt — now lightweight (fastapi/uvicorn/httpx/python-multipart/python-dotenv). Good. Note: prisma-py and pymongo are intentionally NOT here because DB access happens from Next.js (Prisma). This is correct architecture but worth documenting so a future contributor doesn't 're-add' them thinking they were missed.",
+    "/internal/transcribe returns 503 (Transcription unavailable) if emergentintegrations isn't installed — correct graceful degradation. The Next-side /api/transcribe consumer should surface this 503 to the UI as a friendly 'voice transcription temporarily unavailable' message (not tested here — Whisper key IS configured in this preview so the route works)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_regression.py (new — reusable auth regression suite for future iterations)"
+  ],
+  "success_rate": { "backend": "100% (17/17)", "frontend": "100% (3/3 roles, full flow)" },
+  "test_credentials": "manish.uppal@blueprintflow.in / amarpreet.padam@blueprintflow.in / sudama@blueprintflow.in — all password123",
+  "seed_data_creation": "None.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Reusable auth regression suite at /app/backend/tests/test_auth_regression.py covers: (a) /api/auth/me is JSON when unauth, (b) login returns application/json {user, token} for ADMIN/DESIGNER/ONSITE, (c) bpf_session cookie set and /api/auth/me works, (d) Bearer token also works on /api/auth/me, (e) logout invalidates session and re-login succeeds, (f) /api/projects, /api/projects/{id}, /api/notifications, /api/tasks all return JSON <500 for each role. Run with: `cd /app && set -a && . ./frontend/.env && set +a && python -m pytest /app/backend/tests/test_auth_regression.py -v`. RSC prefetch console errors ('Failed to fetch RSC payload') on role change are benign Next.js prefetch of role-gated routes — same as iterations 5 and 6, NOT a bug.",
+  "rca of the issue": "PRODUCTION ONLY (not reproducible in preview which is now clean). Root cause: an earlier iteration added `emergentintegrations` to backend/requirements.txt. That package pulls a heavy dep tree and requires a special extra pip index URL that the production image builder does not have, so the backend container failed to install/start. When FastAPI (port 8001) is down, the Emergent ingress falls through to the Next.js container (port 3000) whose catch-all root-not-found returns an HTML page — hence the client saw '<!DOCTYPE ...' and the JSON.parse blew up with 'Unexpected token <'. Fix applied and verified in preview: (1) requirements.txt trimmed to fastapi/uvicorn/httpx/python-multipart/python-dotenv only; (2) dotenv import wrapped in try/except so a missing dotenv doesn't kill startup; (3) emergentintegrations import moved inside /internal/transcribe and returns 503 gracefully if unavailable; (4) Whisper key renamed WHISPER_LLM_KEY so Next.js won't accidentally pick up EMERGENT_LLM_KEY and swap its storage backend. Mitigation for prod: user must redeploy floor-planning-stage.emergent.host to pull the corrected backend image."
+}
