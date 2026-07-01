@@ -15,18 +15,19 @@ export async function POST(req: Request) {
     if (file.size > 25 * 1024 * 1024)
       throw new ApiError(413, "Audio too large (max 25MB)");
 
-    const fwd = new FormData();
-    fwd.append("file", file, file.name || "voice-note.webm");
-
-    const resp = await fetch(`${INTERNAL}/internal/transcribe`, {
+    const fwd = await fetch(`${INTERNAL}/internal/transcribe`, {
       method: "POST",
-      body: fwd,
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+        "x-audio-filename": file.name || "voice-note.webm",
+      },
+      body: Buffer.from(await file.arrayBuffer()),
     });
-    if (!resp.ok) {
-      const detail = await resp.text().catch(() => "");
-      throw new ApiError(resp.status === 503 ? 503 : 502, `Transcription failed${detail ? `: ${detail}` : ""}`);
+    if (!fwd.ok) {
+      const detail = await fwd.text().catch(() => "");
+      throw new ApiError(fwd.status === 503 ? 503 : 502, `Transcription failed${detail ? `: ${detail}` : ""}`);
     }
-    const data = (await resp.json()) as { text?: string };
+    const data = (await fwd.json()) as { text?: string };
     return json({ text: (data.text ?? "").trim() });
   } catch (e) {
     return fail(e);

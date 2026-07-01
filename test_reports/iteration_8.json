@@ -1,0 +1,38 @@
+{
+  "summary": "Verified the raw-body /internal/transcribe rewrite. Preview is fully healthy: FastAPI proxy up, /api/* always returns JSON (never HTML/502), login returns application/json {user, token} for ADMIN/DESIGNER/ONSITE, session persists on refresh, logout+re-login works, and /api/projects, /api/notifications, /api/tasks all return JSON for every role. The new raw-body /api/transcribe path is wired end-to-end: correctly requires auth (401 JSON), rejects invalid payloads as JSON (not HTML), and reaches the backend without needing python-multipart (backend confirmed booting with only fastapi+uvicorn+httpx+python-dotenv). 21/21 pytest + 4/4 UI role flows pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      { "endpoint": "/api/transcribe", "issue": "Empty body returns 500 {error:'Internal server error'} instead of the backend's 400 {detail:'Empty audio'}. Response IS JSON so the reported bug is not present, but the Next.js route swallows the backend 400 and rethrows as a generic 500. Consider surfacing backend detail." }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_regression.py",
+    "/app/backend/tests/test_transcribe_rawbody.py",
+    "/app/test_reports/pytest/iteration_8.xml"
+  ],
+  "action_items": [
+    "PRODUCTION REDEPLOY still required by user — the multipart-free backend fix is only in the preview code. Once floor-planning-stage.emergent.host is redeployed with the current /app/backend/{server.py,requirements.txt}, the 'Unexpected token <' login error in prod will disappear.",
+    "(Optional) Have Next /api/transcribe forward backend 400/413/503 status codes and JSON detail through instead of masking them as a generic 500 — improves UX for empty/oversized audio and 'transcription unavailable' cases."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py — clean. Reading `await request.body()` + `x-audio-filename` header is exactly the right way to drop the python-multipart dep at import time and prevent boot failure. Optional dotenv + lazy emergentintegrations import keep the process bulletproof.",
+    "backend/requirements.txt — now just fastapi/uvicorn/httpx/python-dotenv. Correct: Prisma handles DB from Next, and Whisper's OpenAISpeechToText is imported lazily. Add a top-of-file comment noting these omissions are INTENTIONAL so future contributors don't 're-add' pymongo/python-multipart/emergentintegrations thinking they were forgotten.",
+    "app/api/transcribe/route.ts — forwarding raw bytes with x-audio-filename is a good match for the backend contract. Consider bubbling the upstream statusCode+body (see minor issue above) instead of catching-and-500'ing."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_transcribe_rawbody.py (new — regression suite for the raw-body /api/transcribe path + JSON-never-HTML guard for /api/*)"
+  ],
+  "success_rate": { "backend": "100% (21/21 pytest)", "frontend": "100% (3/3 roles + logout/re-login)" },
+  "test_credentials": "manish.uppal@blueprintflow.in / amarpreet.padam@blueprintflow.in / sudama@blueprintflow.in — all password123",
+  "seed_data_creation": "None.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Two reusable regression files: /app/backend/tests/test_auth_regression.py (17 cases: /api/auth/me, login for 3 roles via JSON+cookie+Bearer, logout+re-login, landing endpoints) and /app/backend/tests/test_transcribe_rawbody.py (4 cases: empty body is JSON, small blob is JSON, requires auth, and a JSON-never-HTML guard across /api/auth/me, /api/projects, /api/notifications, /api/tasks). Run both with: `cd /app && set -a && . ./frontend/.env && set +a && python -m pytest /app/backend/tests/test_auth_regression.py /app/backend/tests/test_transcribe_rawbody.py -v`. Whisper key present as WHISPER_LLM_KEY in backend/.env; live audio not tested (main agent curl-verified /api/transcribe 200 {text:'Oh'}). Deep On-Site reject flow VoiceRecorder rendering was NOT UI-tested — main agent already curl-verified 200 with text so this is low-risk.",
+  "rca of the issue": "PROD-ONLY bug (preview is clean). The pre-fix backend used FastAPI's File()/UploadFile in /internal/transcribe, which imports python-multipart at module load. In the prod image builder, that dep wasn't reliably installed, so `uvicorn server:app` crashed on startup → all /api/* were served by the fall-through Next 404 HTML → the browser saw '<!DOCTYPE ...' and JSON.parse blew up with 'Unexpected token <'. Current fix (verified in preview): (a) /internal/transcribe reads `await request.body()` — zero python-multipart dep at import time; (b) requirements.txt trimmed to fastapi/uvicorn/httpx/python-dotenv only; (c) emergentintegrations is imported lazily inside the handler and returns 503 gracefully when unavailable; (d) app/api/transcribe/route.ts forwards raw bytes with x-audio-filename header. Backend now imports only fastapi+httpx (both base-image deps) so it always boots. Mitigation: user needs to redeploy prod to pull this backend."
+}

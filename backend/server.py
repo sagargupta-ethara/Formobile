@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import tempfile
 import httpx
-from fastapi import FastAPI, Request, Response, UploadFile, File, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException
 
 try:  # optional in some runtimes; env vars may be injected directly
     from dotenv import load_dotenv
@@ -55,10 +55,11 @@ async def healthz() -> dict:
 
 
 # Internal-only (localhost) Whisper transcription. The Next.js /api/transcribe
-# route authenticates the user and forwards the audio here. Not exposed through
-# the ingress (which only routes /api/* to this service), so it's server-to-server.
+# route authenticates the user and forwards the raw audio bytes here (as the
+# request body — NOT multipart, so this service has no python-multipart
+# dependency and always boots). Not exposed through the ingress.
 @app.post("/internal/transcribe")
-async def transcribe(file: UploadFile = File(...)) -> dict:
+async def transcribe(request: Request) -> dict:
     key = os.environ.get("WHISPER_LLM_KEY") or os.environ.get("EMERGENT_LLM_KEY")
     if not key:
         raise HTTPException(status_code=503, detail="Transcription not configured")
@@ -67,13 +68,14 @@ async def transcribe(file: UploadFile = File(...)) -> dict:
     except Exception:  # library not available in this environment
         raise HTTPException(status_code=503, detail="Transcription unavailable")
 
-    data = await file.read()
+    data = await request.body()
     if not data:
         raise HTTPException(status_code=400, detail="Empty audio")
     if len(data) > 25 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Audio too large (max 25MB)")
 
-    suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+    filename = request.headers.get("x-audio-filename", "audio.webm")
+    suffix = os.path.splitext(filename)[1] or ".webm"
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -85,6 +87,8 @@ async def transcribe(file: UploadFile = File(...)) -> dict:
                 file=audio_file, model="whisper-1", response_format="json"
             )
         return {"text": getattr(resp, "text", "") or ""}
+    except HTTPException:
+        raise
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"Transcription failed: {e}")
     finally:
