@@ -17,6 +17,7 @@ import {
   X,
   Bell,
   DatabaseBackup,
+  Archive,
 } from "lucide-react";
 import { Avatar } from "@/components/ui";
 import NotificationBell from "@/components/NotificationBell";
@@ -40,6 +41,7 @@ function navFor(role: Role, isSuperAdmin: boolean): NavItem[] {
       { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
       { href: "/tasks", label: "Design Tasks", icon: <ListChecks {...I} /> },
       { href: "/users", label: "Team", icon: <Users {...I} /> },
+      { href: "/archive", label: "Project Backups", icon: <Archive {...I} /> },
       // DB backups are super-admin only
       ...(isSuperAdmin
         ? [{ href: "/backups", label: "Backups", icon: <DatabaseBackup {...I} /> }]

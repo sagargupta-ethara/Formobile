@@ -25,7 +25,7 @@ interface Revision {
   id: string;
   version: number;
   fileName: string;
-  createdAt: string;
+  uploadedAt: string;
   url: string;
 }
 interface Drawing {

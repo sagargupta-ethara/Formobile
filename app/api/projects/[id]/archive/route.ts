@@ -31,7 +31,7 @@ export async function GET(
           status: true,
           category: { select: { name: true, discipline: true } },
           files: {
-            select: { id: true, version: true, fileName: true, createdAt: true },
+            select: { id: true, version: true, fileName: true, uploadedAt: true },
             orderBy: { version: "asc" },
           },
         },
@@ -51,7 +51,7 @@ export async function GET(
             id: fl.id,
             version: fl.version,
             fileName: fl.fileName,
-            createdAt: fl.createdAt,
+            uploadedAt: fl.uploadedAt,
             url: `/api/files/${fl.id}`,
           })),
         }))

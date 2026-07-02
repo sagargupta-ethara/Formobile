@@ -1,0 +1,25 @@
+{
+  "summary": "Verified Project Backups (Archive) feature end-to-end. Backend: Admin login 200; GET /api/projects/{id}/archive as admin returns 200 with {project, floors[7] ordered by 'order' asc, totalFiles:2} and drawings alphabetically sorted (Balcony Flooring Detail → Balcony Railing Detail → Bar…). Designer + On-Site login 200 but both get 403 from /api/projects/{id}/archive; unauth call returns 401. Frontend (Admin manish.uppal): sidebar shows 'Project Backups' link → /archive; page lists Active/Archived sections; Test project card (data-testid=archive-project-cmqgcmd1s0000ig2lwj4tj5cs) opens ProjectArchive showing all 7 archive-floor-* rows, Download ZIP (data-testid=archive-download-zip) and Back button (archive-back) present; Ground Floor auto-expanded and 2 archive-revision-* v1 buttons visible; clicking a revision opens the preview Modal with inline image (src=/api/files/…), 'Download' link, and closes with Esc; Back button returns to project list. RBAC UI: Designer + On-Site sidebars do NOT contain the 'Project Backups' link. Note: /archive route itself is not blocked client-side for non-admins — the page shell + project list (from /api/projects, which is available to all authenticated users) renders, but no drawing/revision data is exposed because the archive API returns 403 (matches the stated requirement).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "app/api/projects/[id]/archive/route.ts is clean: single requireRole('ADMIN'), parallel prisma calls (project + floors + tasks), tree assembled in-memory, floors ordered by 'order' asc and drawings sorted alphabetically as required.",
+    "Optional hardening: /archive page is only hidden from non-admins via the sidebar; a Designer/On-Site user who knows the URL can still land on the page shell and see the project list (from /api/projects, which they legitimately have access to elsewhere). Consider a server-side redirect/403 on the /archive route for non-admins if the intent is to hide the page entirely. Data itself is safe — the archive API returns 403.",
+    "Preview modal correctly handles image/PDF/other with a graceful fallback (download button) — good UX.",
+    "Consider streaming the ZIP for very large projects; current /api/projects/:id/backup is acceptable for observed sizes."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "100% (admin 200 with correct shape + ordering; designer/on-site 403; unauth 401)", "frontend": "100% (nav link, project list, floors, revisions, preview modal, ZIP button, back button all working; RBAC nav hidden for non-admins)" },
+  "test_credentials": "Admin manish.uppal@blueprintflow.in / password123 | Designer amarpreet.padam@blueprintflow.in / password123 | On-Site sudama@blueprintflow.in / password123",
+  "seed_data_creation": "None. Used seeded project cmqgcmd1s0000ig2lwj4tj5cs (TEST-SANDBOX / 'Test') with 7 floors; Ground Floor has 2 drawings with a v1 file each.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Archive/Project-Backups feature fully verified. Quick curl regressions: (1) login as admin → GET /api/projects/{id}/archive == 200 with floors ordered by 'order' asc & drawings alphabetical; (2) login as designer or on-site → same endpoint == 403 with error 'You do not have permission…'; (3) no cookie → 401. UI: sidebar shows 'Project Backups' only for ADMIN role; drilling in shows data-testid archive-project-<id> → archive-floor-<id> → archive-revision-<id> (v1, v2 …) → preview Modal (img/iframe + Download); archive-download-zip anchors to /api/projects/{id}/backup; archive-back returns to project list.",
+  "rca of the issue": "N/A — no bugs found."
+}
