@@ -382,3 +382,17 @@ Delivered & tested (testing_agent iteration_4 — frontend pass, no regressions)
 - Consider running `next dev` in supervisor instead of `next start` if you want
   hot reload on `/app/**` while iterating in Emergent.
 - Add `prisma migrate` workflow if schema changes are coming.
+
+## 2026-07-02 — Project Backups (Archive) tab COMPLETE (P0)
+- Admin-only "Project Backups" sidebar link (`Shell.tsx` navFor ADMIN) → `/archive`.
+- `/app/(app)/archive/page.tsx`: lists projects split Active vs Archived (status COMPLETED → "Archived" badge); drill into a project → floors (ordered) → drawings (alpha) → every revision button (v1,v2…); inline preview Modal (image/PDF/other-fallback) + per-file Download; floor-wise "Download ZIP" (reuses `/api/projects/[id]/backup`).
+- `/app/api/projects/[id]/archive/route.ts`: GET, requireRole('ADMIN'), returns {project, floors[], totalFiles}. Uses DesignFile.uploadedAt (not createdAt — fixed a build error this session).
+- Auto daily backup: ALREADY existed — `lib/backup.ts` `scheduleBackups()` cron (midnight IST, full DB dump, durable on Atlas + disk, 14-day retention) wired in `instrumentation.ts`. No new work needed; the Archive tab also shows every historical revision live from the DB.
+- Verified end-to-end by testing_agent iteration_10: 100% backend (admin 200 correct shape/ordering; designer/on-site 403; unauth 401) + 100% frontend (nav, list, drill-down, preview, ZIP, back, RBAC nav hidden). No bugs.
+- NOTE: app runs in PRODUCTION mode (`next start`) — code/route changes require `yarn build` + `supervisorctl restart frontend` to take effect (no hot reload).
+
+## Remaining backlog (priority order)
+- P1: PWA manifest (installable on on-site staff phones).
+- P1: Object storage activation for uploads (currently hybrid local disk; object store used when EMERGENT_LLM_KEY present).
+- P2: Email invites — one-time set-password link (SendGrid/Resend).
+- P2: WhatsApp-style push notifications for drawing uploads.
