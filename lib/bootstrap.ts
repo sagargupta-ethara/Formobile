@@ -186,6 +186,30 @@ export async function ensureSeeded(): Promise<void> {
       }
       console.log(`[bootstrap] Seeded ${TEAM.length} users.`);
     }
+
+    // ---- Super admin (DB-backup access) — idempotent, never resets password ----
+    const superEmail = (process.env.SUPERADMIN_EMAIL || "superadmin@blueprintflow.in").toLowerCase();
+    const existingSuper = await prisma.user.findUnique({ where: { email: superEmail } });
+    if (!existingSuper) {
+      const superPw = await bcrypt.hash(process.env.SUPERADMIN_PASSWORD || "BpF-Sup3r-2026!", 10);
+      await prisma.user.create({
+        data: {
+          name: "Super Admin",
+          email: superEmail,
+          role: "ADMIN",
+          isSuperAdmin: true,
+          status: "ACTIVE",
+          passwordHash: superPw,
+        },
+      });
+      console.log("[bootstrap] Created super admin:", superEmail);
+    } else if (!existingSuper.isSuperAdmin) {
+      await prisma.user.update({
+        where: { email: superEmail },
+        data: { isSuperAdmin: true, role: "ADMIN" },
+      });
+      console.log("[bootstrap] Upgraded existing account to super admin:", superEmail);
+    }
   } catch (e) {
     console.error("[bootstrap] Seed failed (server will continue):", e instanceof Error ? e.message : e);
   }

@@ -31,7 +31,7 @@ const ROLE_LABEL: Record<Role, string> = {
 
 type NavItem = { href: string; label: string; icon: React.ReactNode };
 
-function navFor(role: Role): NavItem[] {
+function navFor(role: Role, isSuperAdmin: boolean): NavItem[] {
   const I = { width: 18, height: 18 } as const;
   const profile = { href: "/profile", label: "Profile", icon: <UserCircle {...I} /> };
   const notifications = { href: "/notifications", label: "Notifications", icon: <Bell {...I} /> };
@@ -40,7 +40,10 @@ function navFor(role: Role): NavItem[] {
       { href: "/projects", label: "Projects", icon: <FolderKanban {...I} /> },
       { href: "/tasks", label: "Design Tasks", icon: <ListChecks {...I} /> },
       { href: "/users", label: "Team", icon: <Users {...I} /> },
-      { href: "/backups", label: "Backups", icon: <DatabaseBackup {...I} /> },
+      // DB backups are super-admin only
+      ...(isSuperAdmin
+        ? [{ href: "/backups", label: "Backups", icon: <DatabaseBackup {...I} /> }]
+        : []),
       notifications,
       profile,
     ];
@@ -63,7 +66,7 @@ export default function Shell({
   user,
   children,
 }: {
-  user: { name: string; email: string; role: Role };
+  user: { name: string; email: string; role: Role; isSuperAdmin?: boolean };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -72,7 +75,7 @@ export default function Shell({
   const [drawer, setDrawer] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(user.name);
-  const nav = navFor(user.role);
+  const nav = navFor(user.role, !!user.isSuperAdmin);
   const current =
     nav.find((n) => pathname === n.href || pathname.startsWith(n.href + "/"))?.label ?? "";
 

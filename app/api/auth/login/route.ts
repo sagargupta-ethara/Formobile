@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       email: user.email,
       role: user.role,
       specializationId: user.specializationId,
+      isSuperAdmin: user.isSuperAdmin,
     };
     const token = await createSession(sessionUser);
     // `token` is also returned so non-browser clients (the mobile app) can store

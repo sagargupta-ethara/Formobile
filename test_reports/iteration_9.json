@@ -1,0 +1,24 @@
+{
+  "summary": "Verified new Super Admin + DB-Backups feature and floor-wise project backup ZIP. Backend gating: super admin login returns isSuperAdmin=true and GET /api/admin/backups=200; regular admin (Manish) returns isSuperAdmin=false and gets 403 {error:'Super admin access required'}; designer also 403. Frontend gating: /login shows exactly THREE quick-login buttons (Admin/Designer/On-Site) and NO super-admin button; manual login as superadmin@blueprintflow.in / BpF-Sup3r-2026! works and shows a 'Backups' sidebar item that loads the full Database backups page (17 Jun 2026 · 7.0 KB · 212 records, Back up now visible). Regular admin sidebar does NOT show 'Backups'; visiting /backups directly renders 'Admins only.' error banner + empty list (403 from API). Floor-wise project backup ZIP verified via curl on cmqgcmd1s0000ig2lwj4tj5cs — Content-Type application/zip, entries organised '<order> - <Floor>/<Drawing>/v<rev>-<file>' plus _MANIFEST.txt. On the project page the data-testid=backup-drawings-btn is an <a href='/api/projects/<id>/backup'> with label 'Backup Drawings' — correct. Regression: all four roles (super/admin/designer/onsite) log in with 200; admin's Projects/Design Tasks/Team/Notifications/Profile nav intact; Building/Breach Timeline/Analytics/Team/Revisions/Drawing Register tabs and Edit Project/Backup Drawings/Assign Task actions all render for admin.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_regression.py",
+    "/app/backend/tests/test_transcribe_rawbody.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Super-admin gating implemented consistently on both server (requireSuperAdmin in lib/api.ts wired into /api/admin/backups + /api/admin/backups/[id]/download) and client (Shell.tsx nav item behind user.isSuperAdmin). SessionUser carries the flag with a backward-compat default of false so existing tokens don't break.",
+    "Bootstrap seed for superadmin is idempotent — good, matches the auth playbook rule for admin seeding.",
+    "Quick-login palette on /login intentionally omits super admin — matches the requirement that the super-admin credentials must not be exposed as a button.",
+    "Project backup ZIP structure ('<order> - <Floor>/<Drawing>/v<rev>-<file>' + _MANIFEST.txt) is clean and self-describing; consider streaming for very large projects (current implementation is fine for observed sizes)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "100% (4/4 gating checks + 4/4 role logins)", "frontend": "100% (super admin sees Backups + full data; admin blocked with 'Admins only.'; no super-admin quick-login button; backup-drawings-btn wired to /api/projects/<id>/backup)" },
+  "test_credentials": "Super Admin superadmin@blueprintflow.in / BpF-Sup3r-2026!  |  Admin manish.uppal@blueprintflow.in / password123  |  Designer amarpreet.padam@blueprintflow.in / password123  |  On-Site sudama@blueprintflow.in / password123",
+  "seed_data_creation": "None (super admin was already seeded by lib/bootstrap.ts on backend startup).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Feature 'Super Admin + DB Backups gating' and 'floor-wise project drawing ZIP' are fully verified. Curl one-liner for the backup ZIP: curl -s -c /tmp/ac.txt -X POST $URL/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"manish.uppal@blueprintflow.in\",\"password\":\"password123\"}' >/dev/null && curl -s -b /tmp/ac.txt -o /tmp/z.bin $URL/api/projects/cmqgcmd1s0000ig2lwj4tj5cs/backup && unzip -l /tmp/z.bin. Gating regression curls: superadmin login → /api/admin/backups==200; manish → /api/admin/backups==403 with body {\"error\":\"Super admin access required\"}. UI regression: after logging in as super admin, sidebar has a 'Backups' item between 'Team' and 'Notifications'; after logging in as manish, the sidebar has only Projects/Design Tasks/Team/Notifications/Profile.",
+  "rca of the issue": "N/A — no bugs found."
+}

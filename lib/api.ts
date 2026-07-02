@@ -41,3 +41,12 @@ export async function requireRole(...roles: Role[]): Promise<SessionUser> {
   }
   return user;
 }
+
+/** Throws 401/403 unless the user is a super admin (DB backups etc.). */
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!user.isSuperAdmin) {
+    throw new ApiError(403, "Super admin access required");
+  }
+  return user;
+}

@@ -102,6 +102,7 @@ model User {
   phone            String?
   passwordHash     String
   role             Role
+  isSuperAdmin     Boolean         @default(false)
   specializationId String?
   specialization   Specialization? @relation(fields: [specializationId], references: [id], onDelete: SetNull)
   department       String?         // e.g. "Interior Design", "Site Supervisor", "MEP · Electrical"

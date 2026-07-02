@@ -15,6 +15,7 @@ export async function GET() {
       email: true,
       role: true,
       status: true,
+      isSuperAdmin: true,
       specializationId: true,
       specialization: { select: { id: true, name: true } },
     },

@@ -10,6 +10,14 @@ All seeded users share the password: **`password123`**
 | Designer | amarpreet.padam@blueprintflow.in       |
 | On-Site  | sudama@blueprintflow.in                |
 
+## Super Admin (DB backups access) — NOT shown as a quick-login button
+| Role        | Email                          | Password         |
+|-------------|--------------------------------|------------------|
+| Super Admin | superadmin@blueprintflow.in    | `BpF-Sup3r-2026!`|
+- Seeded idempotently in `lib/bootstrap.ts` (env-overridable via `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD`).
+- Role is ADMIN with `isSuperAdmin=true`: same powers as a normal admin PLUS the DB Backups page (`/backups`, `/api/admin/backups*`). Regular admins get 403 there and the nav item is hidden.
+
+
 ## All imported team accounts (run via `npx tsx prisma/import-team.ts`)
 **Admin:** manish.uppal, reediima.uppal, kanhav.uppal `@blueprintflow.in`
 **Designer (Interior):** amarpreet.padam, sanjana.dawar, nidhi.kamboj, astha

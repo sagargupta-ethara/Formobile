@@ -1,4 +1,4 @@
-import { ApiError, fail, requireRole } from "@/lib/api";
+import { ApiError, fail, requireSuperAdmin } from "@/lib/api";
 import { getBackupBytes } from "@/lib/backup";
 
 // GET /api/admin/backups/[id]/download — stream the gzipped archive (admins only).
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireRole("ADMIN");
+    await requireSuperAdmin();
     const { id } = await params;
     const got = await getBackupBytes(id);
     if (!got) throw new ApiError(404, "Backup archive not found");

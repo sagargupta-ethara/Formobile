@@ -16,6 +16,7 @@ export interface SessionUser {
   email: string;
   role: Role;
   specializationId: string | null;
+  isSuperAdmin: boolean;
 }
 
 export function hashPassword(plain: string): Promise<string> {
@@ -65,6 +66,7 @@ async function verifyToken(token: string): Promise<SessionUser | null> {
       email: payload.email as string,
       role: payload.role as Role,
       specializationId: (payload.specializationId as string | null) ?? null,
+      isSuperAdmin: Boolean(payload.isSuperAdmin),
     };
   } catch {
     return null;
