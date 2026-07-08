@@ -33,7 +33,7 @@ interface Task {
 
 const DISCIPLINE_LABEL: Record<string, string> = {
   INTERIOR: "Interior Design",
-  STRUCTURE: "Structure",
+  STRUCTURE: "Architecture",
   MEP: "MEP",
   WOODWORK: "Woodwork",
 };
@@ -49,6 +49,7 @@ const FILTERS = [
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [role, setRole] = useState("");
+  const [meId, setMeId] = useState("");
   const [filter, setFilter] = useState("ALL");
   const [assignOpen, setAssignOpen] = useState(false);
   // advanced filters
@@ -56,16 +57,19 @@ export default function TasksPage() {
   const [floorF, setFloorF] = useState("");
   const [discF, setDiscF] = useState("");
   const [personF, setPersonF] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   async function load() {
     const [t, me] = await Promise.all([
       api<{ tasks: Task[] }>("/api/tasks"),
-      api<{ user: { role: string } }>("/api/auth/me"),
+      api<{ user: { id: string; role: string } }>("/api/auth/me"),
     ]);
     setTasks(t.tasks);
     setRole(me.user?.role ?? "");
+    setMeId(me.user?.id ?? "");
   }
   useEffect(() => {
     load();
@@ -108,9 +112,19 @@ export default function TasksPage() {
     .sort((a, b) => a.label.localeCompare(b.label));
 
   const activeAdvanced =
-    !!projectF || !!floorF || !!discF || !!personF || overdueOnly;
+    !!projectF || !!floorF || !!discF || !!personF || overdueOnly || !!dateFrom || !!dateTo;
+
+  const fromMs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
+  const toMs = dateTo ? new Date(dateTo + "T23:59:59").getTime() : null;
 
   const filtered = all.filter((t) => {
+    // Designers: "My Tasks" shows only tasks assigned to them.
+    if (role === "DESIGNER" && meId) {
+      const mine =
+        t.designer?.id === meId ||
+        (t.assignees?.some((a) => a.user.id === meId) ?? false);
+      if (!mine) return false;
+    }
     if (filter === "PENDING") {
       if (!(t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED"))
         return false;
@@ -119,6 +133,12 @@ export default function TasksPage() {
     if (floorF && t.floor.floorName !== floorF) return false;
     if (discF && t.category.discipline !== discF) return false;
     if (personF && !personIds(t).includes(personF)) return false;
+    if (fromMs || toMs) {
+      if (!t.deadline) return false;
+      const d = new Date(t.deadline).getTime();
+      if (fromMs && d < fromMs) return false;
+      if (toMs && d > toMs) return false;
+    }
     if (overdueOnly && !isOverdue(t)) return false;
     return true;
   });
@@ -248,6 +268,30 @@ export default function TasksPage() {
               <Select value={personF} onChange={setPersonF} placeholder="Anyone" searchable
                 options={[{ value: "", label: "Anyone" }, ...personOpts]} />
             </div>
+            <div style={{ minWidth: 130, flex: "1 1 130px" }}>
+              <label className="label">Deadline from</label>
+              <input
+                type="date"
+                data-testid="tasks-date-from"
+                className="input"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(e) => setDateFrom(e.target.value)}
+                style={{ cursor: "pointer" }}
+              />
+            </div>
+            <div style={{ minWidth: 130, flex: "1 1 130px" }}>
+              <label className="label">Deadline to</label>
+              <input
+                type="date"
+                data-testid="tasks-date-to"
+                className="input"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => setDateTo(e.target.value)}
+                style={{ cursor: "pointer" }}
+              />
+            </div>
             <button
               data-testid="tasks-overdue-toggle"
               onClick={() => setOverdueOnly((o) => !o)}
@@ -273,7 +317,7 @@ export default function TasksPage() {
               <button
                 data-testid="tasks-filters-clear"
                 onClick={() => {
-                  setProjectF(""); setFloorF(""); setDiscF(""); setPersonF(""); setOverdueOnly(false);
+                  setProjectF(""); setFloorF(""); setDiscF(""); setPersonF(""); setOverdueOnly(false); setDateFrom(""); setDateTo("");
                 }}
                 className="btn btn-ghost"
                 style={{ fontSize: "0.78rem", padding: "0.45rem 0.7rem", height: 40 }}

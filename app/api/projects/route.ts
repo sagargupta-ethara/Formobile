@@ -49,8 +49,11 @@ export async function GET() {
           }
         : {};
       projectWhere = { tasks: { some: taskFilter } };
+    } else if (user.role === "DESIGNER") {
+      // Designers only see projects they've been added to (project team).
+      projectWhere = { members: { some: { userId: user.id } } };
     }
-    // ADMIN and DESIGNER see all projects (designers self-serve / self-assign).
+    // ADMIN sees everything.
 
     const projects = await prisma.project.findMany({
       where: projectWhere,

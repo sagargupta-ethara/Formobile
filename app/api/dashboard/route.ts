@@ -101,14 +101,18 @@ export async function GET(req: Request) {
     }
 
     if (user.role === "DESIGNER") {
-      const base = {
+      // Designer analytics can be project-scoped (the per-project Analytics tab)
+      // via ?projectId=…; without it, numbers span all their projects.
+      const base: Prisma.DesignTaskWhereInput = {
+        ...(projectId ? { projectId } : {}),
         OR: [
           { designerId: user.id },
           { assignees: { some: { userId: user.id } } },
         ],
       };
-      const [assigned, submitted, approved, rejected, overdue] =
+      const [total, assigned, submitted, approved, rejected, overdue] =
         await Promise.all([
+          prisma.designTask.count({ where: base }),
           prisma.designTask.count({ where: { ...base, status: "ASSIGNED" } }),
           prisma.designTask.count({ where: { ...base, status: PENDING } }),
           prisma.designTask.count({ where: { ...base, status: "APPROVED" } }),
@@ -119,7 +123,7 @@ export async function GET(req: Request) {
         ]);
       return json({
         role: "DESIGNER",
-        cards: { assigned, submitted, approved, rejected, overdue },
+        cards: { total, assigned, submitted, approved, rejected, overdue },
       });
     }
 

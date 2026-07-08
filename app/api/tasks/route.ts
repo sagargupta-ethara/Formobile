@@ -29,6 +29,13 @@ export async function GET(req: Request) {
 
     let where: Prisma.DesignTaskWhereInput = {};
 
+    if (user.role === "DESIGNER") {
+      // Designers see tasks within the projects they belong to (so the
+      // register shows who has what), scoped further on the client for
+      // their personal "My Tasks" list.
+      where.project = { members: { some: { userId: user.id } } };
+    }
+
     if (user.role === "ONSITE") {
       // their own review queue + their own uploads + (when no dedicated
       // reviewer is set) anything routed to their trade / to generalists.
@@ -78,6 +85,8 @@ const createSchema = z.object({
   reviewerId: z.string().optional().nullable(),
   specializationId: z.string().optional().nullable(),
   deadline: z.string().optional().nullable(),
+  // per-drawing deadlines for bulk assignment (categoryId -> ISO date)
+  deadlines: z.record(z.string(), z.string().nullable()).optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
 });
 
@@ -144,6 +153,7 @@ export async function POST(req: Request) {
         where: { projectId: data.projectId, floorId: data.floorId, categoryId },
       });
       if (existing) continue;
+      const perDeadline = data.deadlines?.[categoryId] ?? data.deadline;
       const task = await prisma.designTask.create({
         data: {
           projectId: data.projectId,
@@ -153,7 +163,7 @@ export async function POST(req: Request) {
           designerId: assigneeIds[0],
           reviewerId: data.reviewerId || null,
           assignees: { create: assigneeIds.map((userId) => ({ userId })) },
-          deadline: data.deadline ? new Date(data.deadline) : null,
+          deadline: perDeadline ? new Date(perDeadline) : null,
           priority: data.priority ?? "MEDIUM",
           status: "ASSIGNED",
         },

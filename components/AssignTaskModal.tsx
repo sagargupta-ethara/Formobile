@@ -59,6 +59,8 @@ export default function AssignTaskModal({
   });
   // one or more team members, possibly from different departments
   const [assignees, setAssignees] = useState<string[]>([]);
+  const [step, setStep] = useState(1);
+  const [deadlines, setDeadlines] = useState<Record<string, string>>({});
   function set(k: string, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
   }
@@ -129,6 +131,12 @@ export default function AssignTaskModal({
       );
       return;
     }
+    // Bulk assignment is a 2-step flow: pick people first, then set a
+    // deadline per drawing.
+    if (bulk && step === 1) {
+      setStep(2);
+      return;
+    }
     setSaving(true);
     try {
       const categoryIds = bulk ? fixedCategoryIds : [form.categoryId];
@@ -140,7 +148,8 @@ export default function AssignTaskModal({
           floorId: form.floorId,
           reviewerId: form.reviewerId,
           specializationId: form.specializationId || null,
-          deadline: form.deadline,
+          deadline: bulk ? null : form.deadline,
+          deadlines: bulk ? deadlines : undefined,
           categoryIds,
           designerIds: assignees,
         }),
@@ -151,6 +160,12 @@ export default function AssignTaskModal({
       setSaving(false);
     }
   }
+
+  const selectedCats = bulk
+    ? (fixedCategoryIds ?? []).map(
+        (cid) => categories.find((c) => c.id === cid) ?? { id: cid, name: cid }
+      )
+    : [];
 
   return (
     <Modal open onClose={onClose} title="Assign Design Task" wide>
@@ -317,22 +332,73 @@ export default function AssignTaskModal({
               Routes this drawing to a trade team when no reviewer acts.
             </p>
           </div>
-          <div>
-            <label className="label">Deadline</label>
-            <DateTimePicker
-              mode="datetime"
-              value={form.deadline}
-              onChange={(v) => set("deadline", v)}
-              placeholder="Pick deadline"
-            />
-          </div>
+          {!bulk && (
+            <div>
+              <label className="label">Deadline</label>
+              <DateTimePicker
+                mode="datetime"
+                value={form.deadline}
+                onChange={(v) => set("deadline", v)}
+                placeholder="Pick deadline"
+              />
+            </div>
+          )}
         </div>
+
+        {bulk && step === 2 && (
+          <div
+            data-testid="bulk-deadlines-step"
+            style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #f1f5f9" }}
+          >
+            <div style={{ fontWeight: 700, fontSize: "0.9rem", marginBottom: 4 }}>
+              Set a deadline per drawing
+            </div>
+            <p style={{ fontSize: "0.76rem", color: "#94a3b8", margin: "0 0 12px" }}>
+              Each drawing can have its own deadline. Leave blank for no deadline.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto", paddingRight: 4 }}>
+              {selectedCats.map((c) => (
+                <div
+                  key={c.id}
+                  data-testid={`bulk-deadline-row-${c.id}`}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}
+                >
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e293b", flex: "1 1 160px", minWidth: 0 }}>
+                    {c.name}
+                  </span>
+                  <div style={{ flex: "0 0 220px" }}>
+                    <DateTimePicker
+                      mode="datetime"
+                      value={deadlines[c.id] ?? ""}
+                      onChange={(v) => setDeadlines((d) => ({ ...d, [c.id]: v }))}
+                      placeholder="No deadline"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" disabled={saving}>
-            {saving ? "Assigning…" : "Assign Task"}
+          {bulk && step === 2 && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              data-testid="bulk-assign-back"
+              onClick={() => setStep(1)}
+            >
+              Back
+            </button>
+          )}
+          <button className="btn btn-primary" data-testid="assign-submit-btn" disabled={saving}>
+            {saving
+              ? "Assigning…"
+              : bulk && step === 1
+              ? "Next"
+              : "Assign Task"}
           </button>
         </div>
       </form>

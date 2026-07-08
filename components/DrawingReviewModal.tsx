@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Check, Camera, FileText, ZoomIn, ZoomOut, RotateCw, Maximize, Download, ExternalLink } from "lucide-react";
+import { X, Check, Camera, FileText, ZoomIn, ZoomOut, RotateCw, RotateCcw, Maximize, Download, ExternalLink } from "lucide-react";
 import { api, ErrorText } from "@/components/ui";
 import VoiceRecorder, { recorderSupported } from "@/components/VoiceRecorder";
 import { fmtBytes } from "@/lib/format";
@@ -118,6 +118,30 @@ export default function DrawingReviewModal({
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
+      setBusy(false);
+    }
+  }
+
+  async function reopen() {
+    if (
+      !confirm(
+        "Edit the outcome? This reopens the drawing so you can change your decision."
+      )
+    )
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/reopen`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed");
+      const d = await api<{ task: TaskInfo }>(`/api/tasks/${taskId}`);
+      setTask(d.task);
+      setRejecting(false);
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
       setBusy(false);
     }
   }
@@ -252,8 +276,32 @@ export default function DrawingReviewModal({
               <div style={{ fontWeight: 700 }}>Review Decision</div>
 
               {task && !isPending && (
-                <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
-                  No design is pending your review right now.
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                    {task.status === "APPROVED"
+                      ? "This drawing is approved."
+                      : task.status === "REJECTED"
+                      ? "This drawing was rejected and sent back for revision."
+                      : "No design is pending your review right now."}
+                  </div>
+                  {!assignedToOther &&
+                    (task.status === "APPROVED" || task.status === "REJECTED") && (
+                      <>
+                        <ErrorText>{error}</ErrorText>
+                        <button
+                          className="btn btn-ghost"
+                          data-testid="edit-outcome-btn"
+                          disabled={busy}
+                          onClick={reopen}
+                          style={{ alignSelf: "flex-start" }}
+                        >
+                          <RotateCcw size={15} /> {busy ? "Reopening…" : "Edit outcome"}
+                        </button>
+                        <p style={{ fontSize: "0.74rem", color: "#94a3b8", margin: 0 }}>
+                          Approved or rejected by mistake? Reopen the drawing to change your decision.
+                        </p>
+                      </>
+                    )}
                 </div>
               )}
 

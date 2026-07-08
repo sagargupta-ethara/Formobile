@@ -21,7 +21,7 @@ interface Floor {
 
 const DISCIPLINES = [
   { key: "INTERIOR", label: "Interior Design" },
-  { key: "STRUCTURE", label: "Structure" },
+  { key: "STRUCTURE", label: "Architecture" },
   { key: "MEP", label: "MEP" },
   { key: "WOODWORK", label: "Woodwork" },
 ] as const;

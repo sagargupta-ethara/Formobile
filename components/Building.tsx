@@ -18,6 +18,7 @@ export interface FloorMeta {
   pending: number;
   approved: number;
   rejected: number;
+  assigned?: number; // tasks assigned but not yet uploaded (newly added)
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -298,6 +299,7 @@ function metaColor(m?: FloorMeta): string | null {
   if (!m || m.total === 0) return null;
   if (m.rejected > 0) return "#dc2626";
   if (m.pending > 0) return "#d97706";
+  if ((m.assigned ?? 0) > 0) return "#2563eb"; // newly assigned, awaiting upload
   if (m.approved === m.total) return "#16a34a";
   return "#64748b";
 }
@@ -582,29 +584,71 @@ export default function Building({
                     <Windows seed={i} />
                   )}
 
-                  {/* design-status beacon */}
-                  <span
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      zIndex: 1,
-                      alignSelf: "center",
-                      minWidth: 8,
-                    }}
-                  >
-                    {c && (
+                  {/* design-status beacon + drawing count */}
+                  {(() => {
+                    const m = meta && f.id ? meta[f.id] : undefined;
+                    const active = !!m && ((m.pending ?? 0) > 0 || (m.assigned ?? 0) > 0);
+                    return (
                       <span
                         style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 999,
-                          background: c,
-                          boxShadow: `0 0 0 3px ${c}22`,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          zIndex: 1,
+                          alignSelf: "center",
+                          minWidth: 8,
                         }}
-                      />
-                    )}
-                  </span>
+                      >
+                        {m && m.total > 0 && (
+                          <span
+                            title={`${m.total} drawing${m.total === 1 ? "" : "s"} on this floor`}
+                            style={{
+                              position: "relative",
+                              fontSize: "0.62rem",
+                              fontWeight: 800,
+                              lineHeight: 1,
+                              minWidth: 16,
+                              height: 16,
+                              padding: "0 4px",
+                              borderRadius: 999,
+                              display: "grid",
+                              placeItems: "center",
+                              background: c ?? "#94a3b8",
+                              color: "#fff",
+                              boxShadow: active ? `0 0 0 3px ${(c ?? "#94a3b8")}33` : "none",
+                            }}
+                          >
+                            {m.total}
+                            {active && (
+                              <motion.span
+                                aria-hidden
+                                initial={{ opacity: 0.5, scale: 1 }}
+                                animate={{ opacity: 0, scale: 2.1 }}
+                                transition={{ duration: 1.4, repeat: Infinity, ease: "easeOut" }}
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  borderRadius: 999,
+                                  background: c ?? "#d97706",
+                                }}
+                              />
+                            )}
+                          </span>
+                        )}
+                        {c && !(m && m.total > 0) && (
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 999,
+                              background: c,
+                              boxShadow: `0 0 0 3px ${c}22`,
+                            }}
+                          />
+                        )}
+                      </span>
+                    );
+                  })()}
                 </motion.button>
                 {isLastAboveGrade && <GradeLine />}
               </div>

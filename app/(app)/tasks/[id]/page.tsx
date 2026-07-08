@@ -11,9 +11,9 @@ import {
   ErrorText,
 } from "@/components/ui";
 import { fmtDateTime, fmtBytes, countdown } from "@/lib/format";
-import VoiceRecorder, { recorderSupported } from "@/components/VoiceRecorder";
 import TaskEditModal from "@/components/TaskEditModal";
-import { Mic, Camera, History, Pencil } from "lucide-react";
+import DrawingReviewModal from "@/components/DrawingReviewModal";
+import { Mic, History, Pencil, Upload, Eye } from "lucide-react";
 
 interface FileRec {
   id: string;
@@ -63,6 +63,7 @@ export default function TaskDetailPage() {
   const [role, setRole] = useState("");
   const [logs, setLogs] = useState<AuditRec[]>([]);
   const [editOpen, setEditOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [error, setError] = useState("");
 
   const [meId, setMeId] = useState("");
@@ -228,11 +229,34 @@ export default function TaskDetailPage() {
 
           {/* On-site review actions — the assigned reviewer decides; if no
               dedicated reviewer is set, any routed on-site member may */}
-          {role === "ONSITE" &&
-            isPending &&
-            (!task.reviewer || task.reviewer.id === meId) && (
-              <ReviewBox taskId={task.id} version={task.currentVersion} onDone={load} />
-            )}
+          {/* On-site: all decisions happen inside the drawing preview — the
+              reviewer must open the drawing to approve/reject or edit a
+              previous outcome. */}
+          {role === "ONSITE" && (!task.reviewer || task.reviewer.id === meId) && (
+            <div
+              className="card"
+              style={{ padding: "1.2rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700 }}>
+                  {isPending ? "Ready for your review" : task.status === "APPROVED" ? "You approved this drawing" : task.status === "REJECTED" ? "You rejected this drawing" : "Review"}
+                </div>
+                <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "3px 0 0" }}>
+                  {isPending
+                    ? "Open the drawing to approve or reject it."
+                    : "Opened by mistake? Open the drawing to edit the outcome."}
+                </p>
+              </div>
+              <button
+                className="btn btn-primary"
+                data-testid="onsite-open-review-btn"
+                onClick={() => setReviewOpen(true)}
+                disabled={awaitingUpload && task.status === "REJECTED"}
+              >
+                <Eye size={15} /> {isPending ? "Open Drawing to Review" : "Open Drawing"}
+              </button>
+            </div>
+          )}
           {role === "ONSITE" && isPending && task.reviewer && task.reviewer.id !== meId && (
             <div
               className="card"
@@ -437,6 +461,14 @@ export default function TaskDetailPage() {
           }}
         />
       )}
+      {reviewOpen && (
+        <DrawingReviewModal
+          taskId={task.id}
+          meId={meId}
+          onClose={() => setReviewOpen(false)}
+          onDone={load}
+        />
+      )}
     </>
   );
 }
@@ -513,188 +545,70 @@ function UploadBox({
           : "Upload Design"}
       </div>
       <ErrorText>{error}</ErrorText>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <input
           ref={inputRef}
           type="file"
           accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg,.zip"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          style={{ fontSize: "0.83rem" }}
+          style={{ display: "none" }}
         />
-        <button className="btn btn-primary" disabled={!file || busy} onClick={upload}>
+        <button
+          type="button"
+          data-testid="choose-file-btn"
+          onClick={() => inputRef.current?.click()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flex: "1 1 260px",
+            minWidth: 220,
+            cursor: "pointer",
+            border: "2px dashed",
+            borderColor: file ? "#1d4ed8" : "#93b4e6",
+            background: file ? "#eff6ff" : "#f8fbff",
+            borderRadius: 12,
+            padding: "0.85rem 1rem",
+            textAlign: "left",
+            transition: "border-color 0.2s ease, background 0.2s ease",
+          }}
+        >
+          <span
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              flexShrink: 0,
+              display: "grid",
+              placeItems: "center",
+              background: "linear-gradient(135deg,#3b82f6,#1e3a8a)",
+              color: "#fff",
+            }}
+          >
+            <Upload size={18} />
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontWeight: 700, fontSize: "0.88rem", color: "#1e293b" }}>
+              {file ? file.name : "Click to choose a drawing file"}
+            </span>
+            <span style={{ display: "block", fontSize: "0.74rem", color: "#64748b", marginTop: 1 }}>
+              {file ? fmtBytes(file.size) : "PDF, DWG, DXF, PNG, JPG or ZIP · up to 50 MB"}
+            </span>
+          </span>
+        </button>
+        <button
+          className="btn btn-primary"
+          data-testid="upload-file-btn"
+          disabled={!file || busy}
+          onClick={upload}
+          style={{ cursor: !file || busy ? "not-allowed" : "pointer" }}
+        >
           {busy ? "Uploading…" : "Upload"}
         </button>
       </div>
-      <p style={{ fontSize: "0.74rem", color: "#94a3b8", marginTop: 6 }}>
-        Accepted: PDF, DWG, DXF, PNG, JPG, ZIP · max 50 MB. A new version routes
-        the design back to the on-site reviewer.
+      <p style={{ fontSize: "0.74rem", color: "#94a3b8", marginTop: 8 }}>
+        A new version routes the design back to the on-site reviewer.
       </p>
-    </div>
-  );
-}
-
-function ReviewBox({
-  taskId,
-  version,
-  onDone,
-}: {
-  taskId: string;
-  version: number;
-  onDone: () => void;
-}) {
-  const [rejecting, setRejecting] = useState(false);
-  const [comments, setComments] = useState("");
-  const [voice, setVoice] = useState<File | null>(null);
-  const [micFailed, setMicFailed] = useState(false);
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const photoRef = useRef<HTMLInputElement>(null);
-
-  async function decide(decision: "APPROVED" | "REJECTED") {
-    if (decision === "REJECTED") {
-      if (!comments.trim()) {
-        setRejecting(true);
-        setError("A reason is required to reject.");
-        return;
-      }
-      // PRD: a rejection must carry a voice memo — unless this device
-      // genuinely cannot record (no mic / permission denied).
-      if (!voice && recorderSupported() && !micFailed) {
-        setError("Please record a voice memo explaining the rejection.");
-        return;
-      }
-    }
-    setBusy(true);
-    setError("");
-    try {
-      const fd = new FormData();
-      fd.append("decision", decision);
-      fd.append("comments", comments);
-      if (decision === "REJECTED") {
-        if (voice) fd.append("voice", voice);
-        photos.slice(0, 5).forEach((p) => fd.append("photos", p));
-      }
-      const res = await fetch(`/api/tasks/${taskId}/reviews`, {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed");
-      onDone();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="card" style={{ padding: "1.2rem" }}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>
-        Review Decision <span style={{ color: "#94a3b8", fontWeight: 400 }}>· V{version}</span>
-      </div>
-      <p style={{ fontSize: "0.82rem", color: "#64748b", marginBottom: 12 }}>
-        Approve to complete this design, or reject with a written reason and a
-        recorded voice memo to send it back for revision.
-      </p>
-      <ErrorText>{error}</ErrorText>
-
-      {rejecting && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
-          <textarea
-            className="textarea"
-            rows={3}
-            placeholder="Reason for rejection (required)…"
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-          />
-          <VoiceRecorder
-            onChange={setVoice}
-            onTranscribed={(text) =>
-              setComments((c) => (c.trim() ? `${c.trim()} ${text}` : text))
-            }
-            onUnavailable={() => {
-              setMicFailed(true);
-              setError("");
-            }}
-          />
-          <div>
-            <input
-              ref={photoRef}
-              type="file"
-              accept=".png,.jpg,.jpeg,.webp,.gif"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) =>
-                setPhotos(Array.from(e.target.files ?? []).slice(0, 5))
-              }
-            />
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => photoRef.current?.click()}
-              >
-                <Camera size={15} /> Attach site photos
-              </button>
-              <span style={{ fontSize: "0.74rem", color: "#94a3b8" }}>
-                optional · up to 5
-              </span>
-            </div>
-            {photos.length > 0 && (
-              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                {photos.map((p, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={URL.createObjectURL(p)}
-                    alt={p.name}
-                    title={`${p.name} — click to remove`}
-                    onClick={() => setPhotos((ps) => ps.filter((_, j) => j !== i))}
-                    style={{
-                      width: 52,
-                      height: 52,
-                      objectFit: "cover",
-                      borderRadius: 8,
-                      border: "1px solid #e2e8f0",
-                      cursor: "pointer",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8 }}>
-        {!rejecting && (
-          <button className="btn btn-success" disabled={busy} onClick={() => decide("APPROVED")}>
-            Approve
-          </button>
-        )}
-        {!rejecting ? (
-          <button className="btn btn-danger" disabled={busy} onClick={() => setRejecting(true)}>
-            Reject
-          </button>
-        ) : (
-          <>
-            <button className="btn btn-danger" disabled={busy} onClick={() => decide("REJECTED")}>
-              {busy ? "Submitting…" : "Confirm Rejection"}
-            </button>
-            <button
-              className="btn btn-ghost"
-              disabled={busy}
-              onClick={() => {
-                setRejecting(false);
-                setError("");
-              }}
-            >
-              Back
-            </button>
-          </>
-        )}
-      </div>
     </div>
   );
 }

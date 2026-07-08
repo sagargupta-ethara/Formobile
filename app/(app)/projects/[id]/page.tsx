@@ -43,6 +43,9 @@ import AnalyticsTab from "@/components/project/AnalyticsTab";
 import TeamTab from "@/components/project/TeamTab";
 import RevisionsTab from "@/components/project/RevisionsTab";
 import RegisterTab from "@/components/project/RegisterTab";
+import DesignerRegisterTab from "@/components/project/DesignerRegisterTab";
+import UploadedDrawingsTab from "@/components/project/UploadedDrawingsTab";
+import DesignerAnalyticsTab from "@/components/project/DesignerAnalyticsTab";
 import OnSiteProjectBoard from "@/components/onsite/OnSiteProjectBoard";
 
 interface Project {
@@ -76,7 +79,7 @@ interface Category {
 
 const DISCIPLINES = [
   { key: "INTERIOR", label: "Interior Design" },
-  { key: "STRUCTURE", label: "Structure" },
+  { key: "STRUCTURE", label: "Architecture" },
   { key: "MEP", label: "MEP" },
   { key: "WOODWORK", label: "Woodwork" },
 ] as const;
@@ -88,12 +91,14 @@ function ordinal(n: number): string {
 }
 
 const TABS = [
-  { key: "BUILDING", label: "Building", icon: <Building2 size={15} /> },
-  { key: "BREACHES", label: "Breach Timeline", icon: <AlertTriangle size={15} /> },
-  { key: "ANALYTICS", label: "Analytics", icon: <BarChart3 size={15} /> },
-  { key: "TEAM", label: "Team", icon: <Users size={15} /> },
-  { key: "REVISIONS", label: "Revisions", icon: <History size={15} /> },
-  { key: "SETTINGS", label: "Drawing Register", icon: <Settings2 size={15} /> },
+  { key: "BUILDING", label: "Building", icon: <Building2 size={15} />, roles: ["ADMIN", "DESIGNER"] },
+  { key: "REGISTER_VIEW", label: "Drawing Register", icon: <Settings2 size={15} />, roles: ["DESIGNER"] },
+  { key: "UPLOADED", label: "Uploaded Drawings", icon: <Upload size={15} />, roles: ["ADMIN", "DESIGNER"] },
+  { key: "BREACHES", label: "Breach Timeline", icon: <AlertTriangle size={15} />, roles: ["ADMIN"] },
+  { key: "ANALYTICS", label: "Analytics", icon: <BarChart3 size={15} />, roles: ["ADMIN", "DESIGNER"] },
+  { key: "TEAM", label: "Team", icon: <Users size={15} />, roles: ["ADMIN", "DESIGNER"] },
+  { key: "REVISIONS", label: "Revisions", icon: <History size={15} />, roles: ["ADMIN"] },
+  { key: "SETTINGS", label: "Drawing Register", icon: <Settings2 size={15} />, roles: ["ADMIN"] },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -195,7 +200,7 @@ export default function ProjectDetailPage() {
   // per-floor status meta for building indicators
   const meta: Record<string, FloorMeta> = {};
   for (const f of project.floors)
-    meta[f.id] = { total: 0, pending: 0, approved: 0, rejected: 0 };
+    meta[f.id] = { total: 0, pending: 0, approved: 0, rejected: 0, assigned: 0 };
   for (const t of tasks) {
     const m = meta[t.floorId];
     if (!m) continue;
@@ -203,6 +208,7 @@ export default function ProjectDetailPage() {
     if (t.status === "PENDING_REVIEW" || t.status === "REVISION_SUBMITTED") m.pending++;
     else if (t.status === "APPROVED") m.approved++;
     else if (t.status === "REJECTED") m.rejected++;
+    else if (t.status === "ASSIGNED") m.assigned = (m.assigned ?? 0) + 1;
   }
 
   const floors: BuildingFloor[] = project.floors.map((f) => ({
@@ -218,13 +224,22 @@ export default function ProjectDetailPage() {
   const floorCats = selectedFloor
     ? cats.filter((c) => c.floorIds?.includes(selectedFloor.id))
     : [];
+  // Designers only see their OWN tasks in the building view; the full register
+  // + self-assignment lives in the dedicated Drawing Register tab.
+  const shownFloorTasks = isDesigner
+    ? floorTasks.filter(
+        (t) =>
+          t.designerId === meId ||
+          (t.assignees?.some((a) => a.user.id === meId) ?? false)
+      )
+    : floorTasks;
   // department head-tab counts for this floor
   const discCount = (d: string) =>
-    isAdmin || isDesigner
+    isAdmin
       ? floorCats.filter((c) => c.discipline === d).length
-      : floorTasks.filter((t) => t.category.discipline === d).length;
+      : shownFloorTasks.filter((t) => t.category.discipline === d).length;
   const discCats = floorCats.filter((c) => c.discipline === disc);
-  const discTasks = floorTasks.filter((t) => t.category.discipline === disc);
+  const discTasks = shownFloorTasks.filter((t) => t.category.discipline === disc);
 
   async function addLevel(type: "FLOOR" | "BASEMENT" | "STILT" | "TERRACE") {
     if (!project) return;
@@ -342,7 +357,7 @@ export default function ProjectDetailPage() {
           flexWrap: "wrap",
         }}
       >
-        {(isAdmin ? TABS : TABS.filter((t) => t.key === "BUILDING" || t.key === "TEAM")).map(
+        {(isAdmin ? TABS : TABS.filter((t) => (t.roles as readonly string[]).includes(role))).map(
           (t) => {
             const active = tab === t.key;
             return (
@@ -386,9 +401,25 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
-      {isAdmin && tab === "ANALYTICS" && <AnalyticsTab projectId={project.id} />}
+      {tab === "ANALYTICS" &&
+        (isAdmin ? (
+          <AnalyticsTab projectId={project.id} />
+        ) : (
+          <DesignerAnalyticsTab projectId={project.id} />
+        ))}
       {isAdmin && tab === "BREACHES" && <BreachTimeline tasks={tasks} />}
       {tab === "TEAM" && <TeamTab projectId={project.id} isAdmin={isAdmin} />}
+      {tab === "UPLOADED" && <UploadedDrawingsTab projectId={project.id} />}
+      {isDesigner && tab === "REGISTER_VIEW" && (
+        <DesignerRegisterTab
+          projectId={project.id}
+          floors={project.floors}
+          cats={cats}
+          tasks={tasks}
+          meId={meId}
+          onReload={load}
+        />
+      )}
       {isAdmin && tab === "REVISIONS" && <RevisionsTab projectId={project.id} />}
       {isAdmin && tab === "SETTINGS" && <RegisterTab projectId={project.id} isAdmin />}
 
@@ -604,11 +635,11 @@ export default function ProjectDetailPage() {
                     })}
                   </div>
 
-                  {isAdmin || isDesigner ? (
+                  {isAdmin ? (
                     <FloorRegister
                       cats={discCats}
                       tasks={floorTasks}
-                      mode={isAdmin ? "admin" : "designer"}
+                      mode="admin"
                       onAssign={(categoryId) =>
                         setAssign({ floorId: selectedFloor.id, categoryId })
                       }
@@ -621,7 +652,7 @@ export default function ProjectDetailPage() {
                   ) : discTasks.length === 0 ? (
                     <Empty>
                       {role === "DESIGNER"
-                        ? "No design tasks assigned to you in this department."
+                        ? "No design tasks assigned to you in this department. Use the Drawing Register tab to pick one up."
                         : "Nothing to review here."}
                     </Empty>
                   ) : (
@@ -959,7 +990,17 @@ function FloorRegister({
               ) : isAdmin ? (
                 <button
                   className="btn btn-ghost"
-                  style={{ fontSize: "0.76rem", padding: "0.38rem 0.7rem", flexShrink: 0 }}
+                  data-testid={`assign-btn-${c.id}`}
+                  disabled={selected.size > 0}
+                  title={selected.size > 0 ? "Finish bulk assignment first" : "Assign this drawing"}
+                  style={{
+                    fontSize: "0.76rem",
+                    padding: "0.38rem 0.7rem",
+                    flexShrink: 0,
+                    opacity: selected.size > 0 ? 0.4 : 1,
+                    cursor: selected.size > 0 ? "not-allowed" : "pointer",
+                    pointerEvents: selected.size > 0 ? "none" : "auto",
+                  }}
                   onClick={() => onAssign(c.id)}
                 >
                   <Plus size={13} /> Assign

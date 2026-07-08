@@ -71,7 +71,7 @@ export default function NotificationBell() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 60_000);
+    const t = setInterval(load, 20_000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -112,41 +112,45 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
+        data-testid="notification-bell"
         style={{
           position: "relative",
-          background: "#fff",
-          border: "1px solid var(--color-line)",
+          background: unread > 0 ? "#fff7ed" : "#fff",
+          border: unread > 0 ? "1px solid #fdba74" : "1px solid var(--color-line)",
           borderRadius: 999,
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           display: "grid",
           placeItems: "center",
           cursor: "pointer",
-          color: "#475569",
+          color: unread > 0 ? "#c2410c" : "#475569",
           boxShadow: "var(--shadow-sm)",
         }}
       >
-        <Bell size={15} />
+        <Bell size={16} />
         {unread > 0 && (
           <motion.span
             initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
+            animate={{ scale: [1, 1.18, 1] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
             className="mono"
+            data-testid="notification-count"
             style={{
               position: "absolute",
-              top: -4,
-              right: -5,
-              minWidth: 16,
-              height: 16,
-              padding: "0 4px",
+              top: -6,
+              right: -6,
+              minWidth: 19,
+              height: 19,
+              padding: "0 5px",
               borderRadius: 999,
               background: "#dc2626",
               color: "#fff",
-              fontSize: "0.62rem",
-              fontWeight: 700,
+              fontSize: "0.68rem",
+              fontWeight: 800,
               display: "grid",
               placeItems: "center",
-              boxShadow: "0 2px 6px rgba(220,38,38,0.5)",
+              border: "2px solid #fff",
+              boxShadow: "0 2px 8px rgba(220,38,38,0.6)",
             }}
           >
             {unread > 9 ? "9+" : unread}

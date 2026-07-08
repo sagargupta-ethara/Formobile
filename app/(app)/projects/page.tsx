@@ -53,6 +53,7 @@ interface Project {
   location: string | null;
   status: string;
   expectedCompletion: string | null;
+  createdAt?: string;
   _count: { floors: number; tasks: number };
 }
 
@@ -120,19 +121,45 @@ export default function ProjectsPage() {
         >
           {projects.map((p) => {
             const tint = STATUS_TINT[p.status] ?? STATUS_TINT.COMPLETED;
+            const isNew =
+              !!p.createdAt &&
+              Date.now() - new Date(p.createdAt).getTime() < 7 * 24 * 3600 * 1000;
             return (
               <Item key={p.id}>
                 <Link
                   href={`/projects/${p.id}`}
                   className="card card-hover"
+                  data-testid={`project-card-${p.id}`}
                   style={{
                     display: "block",
                     padding: "1.2rem 1.3rem",
                     textDecoration: "none",
                     color: "inherit",
                     height: "100%",
+                    position: "relative",
+                    borderTop: isNew ? "3px solid #2563eb" : undefined,
                   }}
                 >
+                  {isNew && (
+                    <span
+                      data-testid={`project-new-tag-${p.id}`}
+                      style={{
+                        position: "absolute",
+                        top: 10,
+                        right: 10,
+                        fontSize: "0.6rem",
+                        fontWeight: 800,
+                        letterSpacing: "0.08em",
+                        padding: "0.15rem 0.45rem",
+                        borderRadius: 999,
+                        background: "linear-gradient(90deg,#3b82f6,#1d4ed8)",
+                        color: "#fff",
+                        boxShadow: "0 3px 10px -3px rgba(37,99,235,0.7)",
+                      }}
+                    >
+                      NEW
+                    </span>
+                  )}
                   <div
                     style={{
                       display: "flex",
