@@ -414,3 +414,14 @@ Delivered & tested (testing_agent iteration_4 — frontend pass, no regressions)
 13. Edit outcome: the on-site reviewer who decided can reopen an APPROVED/REJECTED drawing (with confirm) via POST /api/tasks/[id]/reopen → back to PENDING_REVIEW to re-decide.
 
 NOTE: prod mode (next start) — changes need `yarn build` + `supervisorctl restart frontend`. This batch built + restarted in PREVIEW; user must REDEPLOY to push to production.
+
+## 2026-07-08 (b) — 7 follow-up fixes (all verified, iteration_12)
+1. Removed duplicate "Drawing Register" tab for admins (tabs now strictly role-filtered).
+2. Admin floor register: department capsules show assigned/total (e.g. MEP 2/10); added All/Assigned/Unassigned filter; assigned drawings sort to top.
+3. Bulk-assign discoverability: "Bulk assign · select all unassigned" button + clearer bulk bar; single Assign disabled while selecting.
+4. Edit-outcome now uses a custom in-app confirm dialog (reopen-confirm-dialog) instead of window.confirm.
+5. Designer register gained an "All" view (default) across floors with per-floor assignment chips; assigning from All lets the designer pick which floor (Select) in the self-assign modal.
+6. Admin Add-Drawing modal: "All floors" one-click toggle (drawing-floor-all).
+7. Richer designer analytics (deadline-first): My Deadlines list (overdue red + countdowns), On-time % + Approval-rate meters, workload-by-department, My Progress by Floor. dashboard DESIGNER branch now returns charts{approvalRate,onTimeRate,floorProgress,workload,deadlines}.
+
+Known cosmetic: designer on-time-rate shows 100% when they have 0 tasks (could be "N/A"). Reminder: PROD mode — rebuild + restart done in PREVIEW; user must REDEPLOY.
