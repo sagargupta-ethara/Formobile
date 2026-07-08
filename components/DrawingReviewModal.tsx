@@ -55,6 +55,7 @@ export default function DrawingReviewModal({
   const [photos, setPhotos] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setMounted(true), []);
@@ -123,12 +124,7 @@ export default function DrawingReviewModal({
   }
 
   async function reopen() {
-    if (
-      !confirm(
-        "Edit the outcome? This reopens the drawing so you can change your decision."
-      )
-    )
-      return;
+    setConfirmReopen(false);
     setBusy(true);
     setError("");
     try {
@@ -185,6 +181,7 @@ export default function DrawingReviewModal({
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
+            position: "relative",
             boxShadow: "var(--shadow-lg)",
           }}
         >
@@ -292,7 +289,7 @@ export default function DrawingReviewModal({
                           className="btn btn-ghost"
                           data-testid="edit-outcome-btn"
                           disabled={busy}
-                          onClick={reopen}
+                          onClick={() => setConfirmReopen(true)}
                           style={{ alignSelf: "flex-start" }}
                         >
                           <RotateCcw size={15} /> {busy ? "Reopening…" : "Edit outcome"}
@@ -435,6 +432,67 @@ export default function DrawingReviewModal({
               )}
             </div>
           </div>
+          {confirmReopen && (
+            <div
+              data-testid="reopen-confirm-dialog"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(15,23,42,0.55)",
+                backdropFilter: "blur(2px)",
+                display: "grid",
+                placeItems: "center",
+                zIndex: 5,
+                padding: 20,
+              }}
+              onClick={() => setConfirmReopen(false)}
+            >
+              <div
+                className="card"
+                onClick={(e) => e.stopPropagation()}
+                style={{ maxWidth: 380, padding: "1.3rem", textAlign: "center" }}
+              >
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    margin: "0 auto 12px",
+                    display: "grid",
+                    placeItems: "center",
+                    background: "#fef3c7",
+                    color: "#b45309",
+                  }}
+                >
+                  <RotateCcw size={22} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: 6 }}>
+                  Edit this outcome?
+                </div>
+                <p style={{ fontSize: "0.84rem", color: "#64748b", margin: "0 0 16px" }}>
+                  This reopens the drawing for review so you can change your decision.
+                  The designer will be notified.
+                </p>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  <button
+                    className="btn btn-ghost"
+                    data-testid="reopen-cancel-btn"
+                    onClick={() => setConfirmReopen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    data-testid="reopen-confirm-btn"
+                    disabled={busy}
+                    onClick={reopen}
+                  >
+                    {busy ? "Reopening…" : "Yes, edit outcome"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>,

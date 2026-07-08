@@ -110,7 +110,7 @@ export async function GET(req: Request) {
           { assignees: { some: { userId: user.id } } },
         ],
       };
-      const [total, assigned, submitted, approved, rejected, overdue] =
+      const [total, assigned, submitted, approved, rejected, overdue, myTasks] =
         await Promise.all([
           prisma.designTask.count({ where: base }),
           prisma.designTask.count({ where: { ...base, status: "ASSIGNED" } }),
@@ -120,10 +120,73 @@ export async function GET(req: Request) {
           prisma.designTask.count({
             where: { ...base, deadline: { lt: now }, status: { not: "APPROVED" } },
           }),
+          prisma.designTask.findMany({
+            where: base,
+            select: {
+              id: true,
+              status: true,
+              deadline: true,
+              floor: { select: { id: true, floorName: true, order: true } },
+              category: { select: { name: true, discipline: true } },
+            },
+          }),
         ]);
+
+      // per-floor progress (their tasks only)
+      const floorMap = new Map<string, { id: string; name: string; order: number; approved: number; total: number }>();
+      // discipline workload
+      const discMap = new Map<string, number>();
+      // deadline lists
+      const deadlineItems = myTasks
+        .filter((t) => t.deadline && t.status !== "APPROVED")
+        .map((t) => ({
+          id: t.id,
+          name: t.category.name,
+          floorName: t.floor.floorName,
+          deadline: t.deadline as Date,
+          status: t.status,
+          overdue: (t.deadline as Date).getTime() < now.getTime(),
+        }))
+        .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+
+      for (const t of myTasks) {
+        const f = floorMap.get(t.floor.id) ?? {
+          id: t.floor.id,
+          name: t.floor.floorName,
+          order: t.floor.order,
+          approved: 0,
+          total: 0,
+        };
+        f.total++;
+        if (t.status === "APPROVED") f.approved++;
+        floorMap.set(t.floor.id, f);
+        discMap.set(t.category.discipline, (discMap.get(t.category.discipline) ?? 0) + 1);
+      }
+
+      const reviewed = approved + rejected;
+      const approvalRate = reviewed > 0 ? Math.round((approved / reviewed) * 100) : 0;
+      // deadline health: share of tasks that are NOT overdue
+      const onTimeRate = total > 0 ? Math.round(((total - overdue) / total) * 100) : 100;
+
       return json({
         role: "DESIGNER",
         cards: { total, assigned, submitted, approved, rejected, overdue },
+        charts: {
+          approvalRate,
+          onTimeRate,
+          floorProgress: [...floorMap.values()]
+            .sort((a, b) => b.order - a.order)
+            .map(({ id, name, approved, total }) => ({ id, name, approved, total })),
+          workload: [...discMap.entries()].map(([discipline, count]) => ({ discipline, count })),
+          deadlines: deadlineItems.slice(0, 8).map((d) => ({
+            id: d.id,
+            name: d.name,
+            floorName: d.floorName,
+            deadline: d.deadline.toISOString(),
+            status: d.status,
+            overdue: d.overdue,
+          })),
+        },
       });
     }
 

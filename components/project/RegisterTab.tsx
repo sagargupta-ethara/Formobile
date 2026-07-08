@@ -350,6 +350,28 @@ function DrawingModal({
           <div>
             <label className="label">On Floors</label>
             <div data-testid="drawing-floors-picker" style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+              {floors.length > 0 && (
+                <button
+                  type="button"
+                  data-testid="drawing-floor-all"
+                  onClick={() =>
+                    setFloorIds(floorIds.length === floors.length ? [] : floors.map((f) => f.id))
+                  }
+                  style={{
+                    border: "1px solid",
+                    borderColor: floorIds.length === floors.length ? "#1d4ed8" : "#94a3b8",
+                    background: floorIds.length === floors.length ? "#1d4ed8" : "#fff",
+                    color: floorIds.length === floors.length ? "#fff" : "#475569",
+                    borderRadius: 999,
+                    padding: "0.3rem 0.7rem",
+                    fontSize: "0.76rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  All floors
+                </button>
+              )}
               {floors.map((f) => {
                 const on = floorIds.includes(f.id);
                 return (

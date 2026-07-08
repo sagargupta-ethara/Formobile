@@ -1,0 +1,35 @@
+{
+  "summary": "Verified all 7 fixes for iteration 12 (Blueprint Flow follow-ups). Backend pytest: 7/7 passed. UI Playwright: 20/20 assertions passed across 4 roles/pages. FIX1: admin project tab bar shows exactly one 'Drawing Register' (7 tabs total: Building, Uploaded Drawings, Breach Timeline, Analytics, Team, Revisions, Drawing Register). FIX2: department capsules render 'a/n' (observed: Interior 4/13, Structure/Architecture 0/3, MEP 2/10, Woodwork 0/2 on Ground Floor); All/Assigned/Unassigned filter chips present and functional — Assigned filter returns only rows without assign-btn/checkbox (1 row shown, all assigned); assigned drawings sort to top via sort predicate in FloorRegister L864. FIX3: With unassigned filter active, 'Bulk assign · select all unassigned' (bulk-select-all) shows above list; clicking selects every unassigned row, reveals dark bulk-assign-bar with bulk-assign-confirm 'Assign selected', and disables all 12 individual assign-btn-<catId> buttons (verified 12/12 disabled). FIX4: On sudama's APPROVED task cmqhpakn2000pigcdzsaoscjt, onsite-open-review-btn opens DrawingReviewModal; clicking edit-outcome-btn opens custom styled reopen-confirm-dialog with reopen-cancel-btn + reopen-confirm-btn — window.confirm no longer used; Cancel closes dialog with no state change. Backend reopen flow tested end-to-end (approve→reopen→verify PENDING_REVIEW→re-approve to restore). FIX5: Designer amarpreet's Drawing Register tab defaults to designer-floor-chip-ALL, list shows 'on N floors' text, clicking designer-self-assign-<catId> opens SelfAssignModal with a Floor label (Select dropdown for multi-floor candidates) + Off-site Reviewer + Deadline + designer-self-assign-submit. FIX6: Admin RegisterTab 'Add Drawing' modal exposes drawing-floor-all 'All floors' toggle button. FIX7: GET /api/dashboard?projectId=<id> as designer returns cards {total,assigned,submitted,approved,rejected,overdue} + charts{approvalRate,onTimeRate,floorProgress,workload,deadlines}; UI renders designer-analytics, designer-deadlines panel, 'My Performance' with On-time/Approval meters, and 'My Progress by Floor' section. Light regression: /api/projects as designer returns ONLY TEST-SANDBOX (member project); no 'Structure' label leaked (STRUCTURE→'Architecture' mapping preserved).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration12_changes.py",
+    "/app/test_reports/pytest/iteration12.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "page.tsx TABS array uses two entries with label 'Drawing Register' — one keyed REGISTER_VIEW (DESIGNER-only) and one keyed SETTINGS (ADMIN-only). Filtering by role correctly yields exactly one per user, but future refactor could rename SETTINGS→REGISTER_ADMIN to avoid confusion.",
+    "FloorRegister sort predicate `(taskByCat.has(a.id) ? 0 : 1) - (taskByCat.has(b.id) ? 0 : 1)` is a stable boolean sort — works because JS sort is stable in Node 12+. Fine, but a comment or extracted helper (`const isAssigned = c => taskByCat.has(c.id)`) would improve readability.",
+    "DrawingReviewModal.tsx: confirmReopen overlay uses zIndex:5 inside a maxed-out modal (parent zIndex:95). Overlay works because it's positioned absolute inside the panel; ensure future stacking (toasts, tooltips) don't cover it.",
+    "app/api/dashboard/route.ts DESIGNER branch returns onTimeRate=100 when total=0 — a friendly default; consider surfacing 'N/A' or null when there is no data instead of a misleading 100%.",
+    "DesignerRegisterTab SelfAssignModal — when browsing a single floor chip, floor is fixed; when browsing ALL, floor is a Select. Behavior matches spec. Consider a data-testid on the Select trigger (e.g., designer-self-assign-floor-select) for deterministic automation."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration12_changes.py",
+    "/app/test_reports/iteration_12.json"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 passed)",
+    "frontend": "100% (20/20 UI assertions passed across FIX1–FIX7)"
+  },
+  "test_credentials": "Admin manish.uppal@blueprintflow.in / password123 | Designer amarpreet.padam@blueprintflow.in / password123 | On-Site sudama@blueprintflow.in / password123",
+  "seed_data_creation": "None. reopen test self-restored: task cmqhpakn2000pigcdzsaoscjt was reopened then re-approved by sudama within the same test to keep seed state consistent.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 7 iteration-12 fixes verified. Seed data intact: project Test (cmqgcmd1s0000ig2lwj4tj5cs), APPROVED tasks owned by sudama still: cmqhpakn2000pigcdzsaoscjt and cmqhpakja000digcd6xiee15d. Ground Floor cmqgcmd1s0003ig2l2tkl7eaz has 4/13 interior, 0/3 architecture, 2/10 MEP, 0/2 woodwork drawings assigned. Designer amarpreet has some categories still available for self-assign (e.g., cmqgq6eg5000jigkof4137btl). Note: on-time-rate defaults to 100 when designer has zero tasks — may want to display 'N/A' in future. FloorRegister sort keeps assigned drawings on top of the list; verified.",
+  "rca of the issue": "N/A — no bugs found."
+}

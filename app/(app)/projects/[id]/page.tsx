@@ -21,6 +21,7 @@ import {
   History,
   Settings2,
   RotateCcw,
+  CheckSquare,
 } from "lucide-react";
 import {
   api,
@@ -238,6 +239,9 @@ export default function ProjectDetailPage() {
     isAdmin
       ? floorCats.filter((c) => c.discipline === d).length
       : shownFloorTasks.filter((t) => t.category.discipline === d).length;
+  // how many drawings are already assigned in a department (admin view)
+  const discAssigned = (d: string) =>
+    floorTasks.filter((t) => t.category.discipline === d).length;
   const discCats = floorCats.filter((c) => c.discipline === disc);
   const discTasks = shownFloorTasks.filter((t) => t.category.discipline === disc);
 
@@ -357,7 +361,7 @@ export default function ProjectDetailPage() {
           flexWrap: "wrap",
         }}
       >
-        {(isAdmin ? TABS : TABS.filter((t) => (t.roles as readonly string[]).includes(role))).map(
+        {TABS.filter((t) => (t.roles as readonly string[]).includes(role)).map(
           (t) => {
             const active = tab === t.key;
             return (
@@ -598,6 +602,7 @@ export default function ProjectDetailPage() {
                   <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
                     {DISCIPLINES.map((d) => {
                       const n = discCount(d.key);
+                      const a = discAssigned(d.key);
                       const active = disc === d.key;
                       return (
                         <button
@@ -621,14 +626,16 @@ export default function ProjectDetailPage() {
                           {d.label}
                           <span
                             className="mono"
+                            title={isAdmin ? `${a} assigned of ${n} drawings` : undefined}
                             style={{
                               fontSize: "0.66rem",
                               padding: "0.05rem 0.4rem",
                               borderRadius: 999,
                               background: active ? "rgba(255,255,255,0.18)" : "#f1f5f9",
+                              color: isAdmin && a > 0 && !active ? "#1d4ed8" : undefined,
                             }}
                           >
-                            {n}
+                            {isAdmin ? `${a}/${n}` : n}
                           </span>
                         </button>
                       );
@@ -841,11 +848,21 @@ function FloorRegister({
 }) {
   const isAdmin = mode === "admin";
   const [q, setQ] = useState(""); // quick filter — registers run 18–41 drawings
+  const [assignFilter, setAssignFilter] = useState<"ALL" | "ASSIGNED" | "UNASSIGNED">("ALL");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const taskByCat = new Map<string, Task>();
   for (const t of tasks) taskByCat.set(t.category.id, t);
 
-  const shown = cats.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+  const shown = cats
+    .filter((c) => c.name.toLowerCase().includes(q.toLowerCase()))
+    .filter((c) => {
+      if (assignFilter === "ASSIGNED") return taskByCat.has(c.id);
+      if (assignFilter === "UNASSIGNED") return !taskByCat.has(c.id);
+      return true;
+    })
+    // assigned drawings float to the top so they're easy to find
+    .sort((a, b) => (taskByCat.has(a.id) ? 0 : 1) - (taskByCat.has(b.id) ? 0 : 1));
+  const unassignedShown = shown.filter((c) => !taskByCat.has(c.id));
 
   function toggleSel(id: string) {
     setSelected((s) => {
@@ -865,6 +882,56 @@ function FloorRegister({
         onChange={(e) => setQ(e.target.value)}
         style={{ marginBottom: 10 }}
       />
+      {isAdmin && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 5 }}>
+            {(["ALL", "ASSIGNED", "UNASSIGNED"] as const).map((f) => {
+              const active = assignFilter === f;
+              const label = f === "ALL" ? "All" : f === "ASSIGNED" ? "Assigned" : "Unassigned";
+              return (
+                <button
+                  key={f}
+                  data-testid={`register-filter-${f.toLowerCase()}`}
+                  onClick={() => setAssignFilter(f)}
+                  style={{
+                    border: "1px solid",
+                    borderColor: active ? "#1d4ed8" : "var(--color-line)",
+                    background: active ? "#eff6ff" : "#fff",
+                    color: active ? "#1d4ed8" : "#64748b",
+                    borderRadius: 999,
+                    padding: "0.25rem 0.65rem",
+                    fontSize: "0.72rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {selected.size === 0 && unassignedShown.length > 0 && (
+            <button
+              data-testid="bulk-select-all"
+              onClick={() => setSelected(new Set(unassignedShown.map((c) => c.id)))}
+              style={{
+                border: "1px dashed #94a3b8",
+                background: "#fff",
+                color: "#475569",
+                borderRadius: 8,
+                padding: "0.3rem 0.7rem",
+                fontSize: "0.72rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+              title="Tick every unassigned drawing to bulk-assign them together"
+            >
+              <CheckSquare size={13} style={{ marginRight: 5, verticalAlign: "-2px" }} />
+              Bulk assign · select all unassigned
+            </button>
+          )}
+        </div>
+      )}
       {isAdmin && selected.size > 0 && (
         <div
           data-testid="bulk-assign-bar"
