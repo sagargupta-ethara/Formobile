@@ -644,7 +644,7 @@ export default function ProjectDetailPage() {
                   {isAdmin ? (
                     <FloorRegister
                       cats={discCats}
-                      tasks={floorTasks}
+                      tasks={discTasks}
                       mode="admin"
                       onAssign={(categoryId) =>
                         setAssign({ floorId: selectedFloor.id, categoryId })
@@ -852,7 +852,23 @@ function FloorRegister({
   const taskByCat = new Map<string, Task>();
   for (const t of tasks) taskByCat.set(t.category.id, t);
 
-  const shown = cats
+  // Surface any assigned drawings on this floor that aren't in the floor's
+  // register (data can drift — a task exists here but the drawing's floor list
+  // doesn't include this floor). This keeps the visible list consistent with
+  // the "assigned" count shown on the department capsule.
+  const catIds = new Set(cats.map((c) => c.id));
+  const orphanCats: Category[] = tasks
+    .filter((t) => !catIds.has(t.category.id))
+    .map((t) => ({
+      id: t.category.id,
+      name: t.category.name,
+      appliesTo: [],
+      floorIds: [],
+      discipline: t.category.discipline ?? "",
+    }));
+  const allCats = [...cats, ...orphanCats];
+
+  const shown = allCats
     .filter((c) => c.name.toLowerCase().includes(q.toLowerCase()))
     .filter((c) => {
       if (assignFilter === "ASSIGNED") return taskByCat.has(c.id);
