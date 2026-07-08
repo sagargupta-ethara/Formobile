@@ -21,7 +21,6 @@ import {
   History,
   Settings2,
   RotateCcw,
-  CheckSquare,
 } from "lucide-react";
 import {
   api,
@@ -862,7 +861,6 @@ function FloorRegister({
     })
     // assigned drawings float to the top so they're easy to find
     .sort((a, b) => (taskByCat.has(a.id) ? 0 : 1) - (taskByCat.has(b.id) ? 0 : 1));
-  const unassignedShown = shown.filter((c) => !taskByCat.has(c.id));
 
   function toggleSel(id: string) {
     setSelected((s) => {
@@ -883,7 +881,7 @@ function FloorRegister({
         style={{ marginBottom: 10 }}
       />
       {isAdmin && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           <div style={{ display: "flex", gap: 5 }}>
             {(["ALL", "ASSIGNED", "UNASSIGNED"] as const).map((f) => {
               const active = assignFilter === f;
@@ -910,26 +908,6 @@ function FloorRegister({
               );
             })}
           </div>
-          {selected.size === 0 && unassignedShown.length > 0 && (
-            <button
-              data-testid="bulk-select-all"
-              onClick={() => setSelected(new Set(unassignedShown.map((c) => c.id)))}
-              style={{
-                border: "1px dashed #94a3b8",
-                background: "#fff",
-                color: "#475569",
-                borderRadius: 8,
-                padding: "0.3rem 0.7rem",
-                fontSize: "0.72rem",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-              title="Tick every unassigned drawing to bulk-assign them together"
-            >
-              <CheckSquare size={13} style={{ marginRight: 5, verticalAlign: "-2px" }} />
-              Bulk assign · select all unassigned
-            </button>
-          )}
         </div>
       )}
       {isAdmin && selected.size > 0 && (
