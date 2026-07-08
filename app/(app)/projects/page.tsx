@@ -123,7 +123,7 @@ export default function ProjectsPage() {
             const tint = STATUS_TINT[p.status] ?? STATUS_TINT.COMPLETED;
             const isNew =
               !!p.createdAt &&
-              Date.now() - new Date(p.createdAt).getTime() < 7 * 24 * 3600 * 1000;
+              Date.now() - new Date(p.createdAt).getTime() < 2 * 24 * 3600 * 1000;
             return (
               <Item key={p.id}>
                 <Link
