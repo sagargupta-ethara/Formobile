@@ -396,3 +396,21 @@ Delivered & tested (testing_agent iteration_4 — frontend pass, no regressions)
 - P1: Object storage activation for uploads (currently hybrid local disk; object store used when EMERGENT_LLM_KEY present).
 - P2: Email invites — one-time set-password link (SendGrid/Resend).
 - P2: WhatsApp-style push notifications for drawing uploads.
+
+## 2026-07-08 — 13-item feature/flow update (all verified, iteration_11)
+1. Date-range filter (Deadline from/to) on /tasks for all roles.
+2. Designer "Drawing Register" tab: search + floor chips, shows who each drawing is assigned to, self-assign modal (fixed floor + required off-site reviewer + optional deadline). Designers' Building view now shows only THEIR tasks.
+3. "Uploaded Drawings" tab (Admin + Designer): drawings grouped by heading, expand to preview each version inline. New GET /api/projects/[id]/uploads (admin or project member).
+4. Bulk-assign selection disables per-row Assign buttons.
+5. Project visibility: DESIGNER sees only projects they're a member of (projects + tasks scoped). Admin sees all; on-site scoped to routed work.
+6. Bulk assign = 2-step: pick people+reviewer → "Next" → per-drawing deadline pickers. tasks POST accepts deadlines map.
+7. "Structure" label renamed to "Architecture" everywhere (enum value unchanged, no migration).
+7b. Notification bell: larger, prominent pulsing red count badge; poll 60s→20s.
+8. Newest project sorts first + shows a "NEW" tag (created within 7 days).
+9. Designer per-project Analytics tab (own tasks only); dashboard DESIGNER branch now projectId-scoped. Admin keeps full project analytics.
+10. Building floors show a prominent drawing-count badge + pulse on floors with pending/newly-assigned work (FloorMeta.assigned; blue = newly assigned).
+11. Task upload replaced raw file input with a prominent styled drop button + cursor pointer.
+12. On-site: no inline approve/reject on task page — must open the drawing (DrawingReviewModal) to decide.
+13. Edit outcome: the on-site reviewer who decided can reopen an APPROVED/REJECTED drawing (with confirm) via POST /api/tasks/[id]/reopen → back to PENDING_REVIEW to re-decide.
+
+NOTE: prod mode (next start) — changes need `yarn build` + `supervisorctl restart frontend`. This batch built + restarted in PREVIEW; user must REDEPLOY to push to production.
