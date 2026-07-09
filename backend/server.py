@@ -58,15 +58,17 @@ async def healthz() -> dict:
 # route authenticates the user and forwards the raw audio bytes here (as the
 # request body — NOT multipart, so this service has no python-multipart
 # dependency and always boots). Not exposed through the ingress.
+#
+# For a raw OpenAI key (sk-...) we call the OpenAI API directly with httpx —
+# this keeps the backend lightweight (no heavy emergentintegrations/litellm
+# dependency) so it works identically in preview and production. An Emergent
+# universal key (sk-emergent-...) is routed via emergentintegrations when that
+# library is available (preview).
 @app.post("/internal/transcribe")
 async def transcribe(request: Request) -> dict:
     key = os.environ.get("WHISPER_LLM_KEY") or os.environ.get("EMERGENT_LLM_KEY")
     if not key:
         raise HTTPException(status_code=503, detail="Transcription not configured")
-    try:
-        from emergentintegrations.llm.openai import OpenAISpeechToText
-    except Exception:  # library not available in this environment
-        raise HTTPException(status_code=503, detail="Transcription unavailable")
 
     data = await request.body()
     if not data:
@@ -75,6 +77,31 @@ async def transcribe(request: Request) -> dict:
         raise HTTPException(status_code=413, detail="Audio too large (max 25MB)")
 
     filename = request.headers.get("x-audio-filename", "audio.webm")
+    content_type = request.headers.get("content-type") or "application/octet-stream"
+
+    # --- Raw OpenAI key: call OpenAI's Whisper endpoint directly (lightweight) ---
+    if not key.startswith("sk-emergent-"):
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=10.0)) as oc:
+                resp = await oc.post(
+                    "https://api.openai.com/v1/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {key}"},
+                    files={"file": (filename, data, content_type)},
+                    data={"model": "whisper-1", "response_format": "json"},
+                )
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=f"Transcription failed: {e}")
+        if resp.status_code != 200:
+            detail = resp.text[:200]
+            raise HTTPException(status_code=502, detail=f"Transcription failed: {detail}")
+        return {"text": (resp.json().get("text") or "")}
+
+    # --- Emergent universal key: use emergentintegrations (preview) ---
+    try:
+        from emergentintegrations.llm.openai import OpenAISpeechToText
+    except Exception:  # library not available in this environment
+        raise HTTPException(status_code=503, detail="Transcription unavailable")
+
     suffix = os.path.splitext(filename)[1] or ".webm"
     tmp_path = None
     try:

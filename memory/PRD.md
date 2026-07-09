@@ -425,3 +425,9 @@ NOTE: prod mode (next start) — changes need `yarn build` + `supervisorctl rest
 7. Richer designer analytics (deadline-first): My Deadlines list (overdue red + countdowns), On-time % + Approval-rate meters, workload-by-department, My Progress by Floor. dashboard DESIGNER branch now returns charts{approvalRate,onTimeRate,floorProgress,workload,deadlines}.
 
 Known cosmetic: designer on-time-rate shows 100% when they have 0 tasks (could be "N/A"). Reminder: PROD mode — rebuild + restart done in PREVIEW; user must REDEPLOY.
+
+## 2026-07-09 — Voice-note auto-transcription (Whisper) + prod fix
+- On drawing rejection, the reviewer's voice memo AUTO-transcribes into the (editable) reason box on Stop. Hindi/English/Hinglish via Whisper auto-detect. VoiceRecorder shows inline transcribing/success/error states; DrawingReviewModal replaces the reason box with the transcript.
+- Key: WHISPER_LLM_KEY in backend/.env (falls back to EMERGENT_LLM_KEY). Accepts raw OpenAI keys (sk-proj/sk-...) and Emergent keys (sk-emergent-...).
+- PROD FIX: production returned {"detail":"Transcription unavailable"} because emergentintegrations is NOT in requirements.txt (kept out to avoid the heavy-dep boot 502). Rewrote backend/server.py /internal/transcribe: for a RAW OpenAI key it now calls https://api.openai.com/v1/audio/transcriptions directly via httpx (already a dep) — lightweight, works in preview + prod. sk-emergent keys still use emergentintegrations (preview only).
+- ACTION FOR USER: redeploy, and ensure production env has WHISPER_LLM_KEY set to the same OpenAI key.
