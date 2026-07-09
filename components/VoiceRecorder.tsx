@@ -49,6 +49,8 @@ export default function VoiceRecorder({
   const [seconds, setSeconds] = useState(0);
   const [url, setUrl] = useState<string | null>(null);
   const [transcribing, setTranscribing] = useState(false);
+  const [txErr, setTxErr] = useState("");
+  const [txDone, setTxDone] = useState(false);
   const fileRef = useRef<File | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -58,15 +60,22 @@ export default function VoiceRecorder({
   async function transcribe() {
     if (!fileRef.current || !onTranscribed) return;
     setTranscribing(true);
+    setTxErr("");
+    setTxDone(false);
     try {
       const fd = new FormData();
       fd.append("file", fileRef.current);
       const res = await fetch("/api/transcribe", { method: "POST", body: fd });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Transcription failed");
-      onTranscribed(d.text || "");
+      const text = (d.text || "").trim();
+      onTranscribed(text);
+      if (text) setTxDone(true);
+      else setTxErr("Couldn't make out any speech — please type the reason below.");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Transcription failed");
+      setTxErr(
+        e instanceof Error ? e.message : "Transcription failed — please type the reason below."
+      );
     } finally {
       setTranscribing(false);
     }
@@ -107,6 +116,8 @@ export default function VoiceRecorder({
         });
         setState("done");
         onChange(file);
+        // Auto-transcribe the note into the reason box (editable afterwards).
+        if (onTranscribed) void transcribe();
       };
       rec.start();
       recRef.current = rec;
@@ -134,6 +145,8 @@ export default function VoiceRecorder({
     if (url) URL.revokeObjectURL(url);
     setUrl(null);
     setSeconds(0);
+    setTxErr("");
+    setTxDone(false);
     setState("idle");
     onChange(null);
   }
@@ -227,33 +240,50 @@ export default function VoiceRecorder({
       )}
 
       {state === "done" && url && (
-        <>
-          <audio controls src={url} style={{ height: 36, maxWidth: 240 }} />
-          <span className="mono" style={{ fontSize: "0.78rem", color: "#64748b" }}>
-            {mm}:{ss}
-          </span>
-          {onTranscribed && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <audio controls src={url} style={{ height: 36, maxWidth: 240 }} />
+            <span className="mono" style={{ fontSize: "0.78rem", color: "#64748b" }}>
+              {mm}:{ss}
+            </span>
+            {onTranscribed && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                data-testid="voice-transcribe-btn"
+                onClick={transcribe}
+                disabled={transcribing}
+                style={{ padding: "0.45rem 0.7rem" }}
+              >
+                {transcribing ? <span className="spinner" /> : <FileText size={14} />}
+                {transcribing ? "Transcribing…" : "Transcribe again"}
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-ghost"
-              data-testid="voice-transcribe-btn"
-              onClick={transcribe}
-              disabled={transcribing}
+              onClick={discard}
               style={{ padding: "0.45rem 0.7rem" }}
             >
-              {transcribing ? <span className="spinner" /> : <FileText size={14} />}
-              {transcribing ? "Transcribing…" : "Transcribe to text"}
+              <Trash2 size={14} /> Re-record
             </button>
+          </div>
+          {onTranscribed && transcribing && (
+            <span data-testid="voice-transcribing" style={{ fontSize: "0.76rem", color: "#1d4ed8", display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="spinner" /> Transcribing your voice note…
+            </span>
           )}
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={discard}
-            style={{ padding: "0.45rem 0.7rem" }}
-          >
-            <Trash2 size={14} /> Re-record
-          </button>
-        </>
+          {onTranscribed && !transcribing && txDone && (
+            <span data-testid="voice-transcribed-ok" style={{ fontSize: "0.76rem", color: "#15803d" }}>
+              ✓ Transcribed into the reason box — edit it below if needed.
+            </span>
+          )}
+          {onTranscribed && !transcribing && txErr && (
+            <span data-testid="voice-transcribe-error" style={{ fontSize: "0.76rem", color: "#b45309" }}>
+              {txErr}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
