@@ -57,6 +57,16 @@ export default function DrawingReviewModal({
   const [busy, setBusy] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
+  // Track whether we changed server state (e.g. reopened a decision) without
+  // yet refreshing the parent. We defer the parent refresh until the modal
+  // closes so a mid-flow reload can't remount this modal and make the
+  // approve/reject buttons flicker.
+  const dirtyRef = useRef(false);
+  const closeRef = useRef<() => void>(() => {});
+  closeRef.current = () => {
+    if (dirtyRef.current) onDone();
+    onClose();
+  };
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -67,7 +77,7 @@ export default function DrawingReviewModal({
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
     }
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -76,7 +86,7 @@ export default function DrawingReviewModal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [onClose]);
+  }, []);
 
   const currentFile =
     task?.files.find((f) => f.version === task.currentVersion) ?? task?.files[0] ?? null;
@@ -134,7 +144,10 @@ export default function DrawingReviewModal({
       const d = await api<{ task: TaskInfo }>(`/api/tasks/${taskId}`);
       setTask(d.task);
       setRejecting(false);
-      onDone();
+      // Mark dirty so the parent refreshes when the modal closes — but DON'T
+      // refresh now, or the parent reload could remount this modal and make the
+      // freshly-shown approve/reject buttons flicker.
+      dirtyRef.current = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -152,7 +165,7 @@ export default function DrawingReviewModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        onClick={onClose}
+        onClick={() => closeRef.current()}
         style={{
           position: "fixed",
           inset: 0,
@@ -210,7 +223,7 @@ export default function DrawingReviewModal({
             <button
               className="btn btn-ghost"
               data-testid="drawing-review-close"
-              onClick={onClose}
+              onClick={() => closeRef.current()}
               style={{ padding: "0.45rem 0.6rem" }}
             >
               <X size={16} />

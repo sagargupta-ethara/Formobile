@@ -431,3 +431,7 @@ Known cosmetic: designer on-time-rate shows 100% when they have 0 tasks (could b
 - Key: WHISPER_LLM_KEY in backend/.env (falls back to EMERGENT_LLM_KEY). Accepts raw OpenAI keys (sk-proj/sk-...) and Emergent keys (sk-emergent-...).
 - PROD FIX: production returned {"detail":"Transcription unavailable"} because emergentintegrations is NOT in requirements.txt (kept out to avoid the heavy-dep boot 502). Rewrote backend/server.py /internal/transcribe: for a RAW OpenAI key it now calls https://api.openai.com/v1/audio/transcriptions directly via httpx (already a dep) — lightweight, works in preview + prod. sk-emergent keys still use emergentintegrations (preview only).
 - ACTION FOR USER: redeploy, and ensure production env has WHISPER_LLM_KEY set to the same OpenAI key.
+
+## 2026-07-09 (b) — Fix: edit-outcome approve/reject flicker
+- Bug: on OnSiteProjectBoard, "Edit outcome" → Yes made Approve/Reject flash then disappear. Cause: reopen() called onDone() mid-flow → parent load() refetch remounted DrawingReviewModal. (Task-detail page unaffected.)
+- Fix (DrawingReviewModal): reopen() now sets dirtyRef instead of calling onDone(); parent refresh is deferred to modal close (closeRef: onDone-if-dirty then onClose) or to decide(). Escape/backdrop/X routed through closeRef. Verified on the board: Approve/Reject stable, no flicker.
